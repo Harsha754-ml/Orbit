@@ -48,3 +48,7 @@ Edit `config.json` to customize behavior:
 
 - **No Trigger**: Ensure AutoHotkey v2 is installed and `orbit-trigger.ahk` is running.
 - **Config Crash**: Malformed JSON results in automatic fallback to safe defaults.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
