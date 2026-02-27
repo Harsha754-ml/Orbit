@@ -1,6 +1,0 @@
-- **Electron App Architecture**: Main, Preload, and Renderer separation with secure IPC.
-- **State Machine UI**: Complex state-based transitions (IDLE/ACTIVE/COLLAPSING).
-- **Design Systems**: Dynamic theme engine using CSS variables and JSON definitions.
-- **Advanced UX**: Proximity-based scaling, parallax effects, and staggered animations.
-- **Robust Engineering**: File system watchers with debouncing and graceful config fallbacks.
-- **Windows Integration**: Multi-monitor DPI handling and AutoHotkey v2 process control.
