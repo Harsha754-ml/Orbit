@@ -76,14 +76,30 @@
     },
     {
       "type": "group",
+      "label": "Settings",
+      "icon": "terminal.svg",
+      "children": [
+        { "type": "command", "label": "Toggle Labels", "icon": "terminal.svg", "command": "ui:toggle-labels" },
+        { "type": "command", "label": "Toggle Sound", "icon": "terminal.svg", "command": "ui:toggle-sound" },
+        { "type": "command", "label": "Toggle DevMode", "icon": "terminal.svg", "command": "ui:toggle-dev" }
+      ]
+    },
+    {
+      "type": "group",
       "label": "Themes",
-      "icon": "downloads.svg",
+      "icon": "themes.svg",
       "children": [
         { "type": "command", "label": "Dark Neon", "icon": "terminal.svg", "command": "theme:Dark Neon" },
         { "type": "command", "label": "Minimal Frost", "icon": "terminal.svg", "command": "theme:Minimal Frost" },
         { "type": "command", "label": "Cyber Blue", "icon": "terminal.svg", "command": "theme:Cyber Blue" },
         { "type": "command", "label": "Mono Glass", "icon": "terminal.svg", "command": "theme:Mono Glass" }
       ]
+    },
+    {
+      "type": "custom",
+      "label": "Web Search",
+      "icon": "terminal.svg",
+      "path": "https://www.google.com"
     }
   ]
 }

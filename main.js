@@ -7,8 +7,15 @@ let mainWindow;
 let config;
 let themes;
 
-const CONFIG_PATH = path.join(__dirname, 'config.json');
-const THEMES_PATH = path.join(__dirname, 'themes.json');
+const CONFIG_PATH = app.isPackaged 
+  ? path.join(app.getPath('userData'), 'config.json') 
+  : path.join(__dirname, 'config.json');
+const THEMES_PATH = app.isPackaged 
+  ? path.join(app.getPath('userData'), 'themes.json') 
+  : path.join(__dirname, 'themes.json');
+
+const DEFAULT_CONFIG_PATH = path.join(__dirname, 'config.json');
+const DEFAULT_THEMES_PATH = path.join(__dirname, 'themes.json');
 
 // Single Instance Lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -19,11 +26,23 @@ if (!gotTheLock) {
     if (mainWindow) showWindow();
   });
   app.whenReady().then(() => {
+    ensureFilesExist();
     loadConfig();
     loadThemes();
     createWindow();
     watchFiles();
   });
+}
+
+function ensureFilesExist() {
+  if (app.isPackaged) {
+    if (!fs.existsSync(CONFIG_PATH) && fs.existsSync(DEFAULT_CONFIG_PATH)) {
+      fs.copyFileSync(DEFAULT_CONFIG_PATH, CONFIG_PATH);
+    }
+    if (!fs.existsSync(THEMES_PATH) && fs.existsSync(DEFAULT_THEMES_PATH)) {
+      fs.copyFileSync(DEFAULT_THEMES_PATH, THEMES_PATH);
+    }
+  }
 }
 
 function loadConfig() {
@@ -131,6 +150,13 @@ function handleAction(action) {
     return;
   }
 
+  if (cmd && cmd.startsWith('ui:toggle-')) {
+    if (cmd === 'ui:toggle-labels') updateConfig({ showHoverLabels: !config.showHoverLabels });
+    else if (cmd === 'ui:toggle-sound') updateConfig({ enableSoundEffects: !config.enableSoundEffects });
+    else if (cmd === 'ui:toggle-dev') updateConfig({ devMode: !config.devMode });
+    return;
+  }
+
   // Custom Action Logic
   if (type === 'custom') {
     const pathValue = action.path;
@@ -160,8 +186,12 @@ function handleAction(action) {
 
 function updateConfig(newValues) {
   config = { ...config, ...newValues };
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-  if (mainWindow) mainWindow.webContents.send('config-updated', config);
+  try {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+    if (mainWindow) mainWindow.webContents.send('config-updated', config);
+  } catch (err) {
+    console.error('Failed to update config', err);
+  }
 }
 
 function launchVSCode() {
