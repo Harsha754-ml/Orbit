@@ -1,6 +1,6 @@
 // ============================================
-// ORBIT RENDERER — Hard Rebuild Architecture
-// Single Source of Truth. Clean. Immersive.
+// ORBIT RENDERER — Click-Through Architecture
+// Transparent window. Radial-only interaction.
 // ============================================
 
 // STATE
@@ -12,10 +12,12 @@ let currentState = {
     isEditMode: false,
     mouseX: 0,
     mouseY: 0,
-    parallax: { x: 0, y: 0 }
+    parallax: { x: 0, y: 0 },
+    radialCenter: { x: 0, y: 0 }, // Where the radial spawned (pixel coords)
+    cursorInBounds: false
 };
 
-// DOM REFS (Clean DOM Contract)
+// DOM REFS
 const overlay = document.getElementById('orbit-overlay');
 const menuContainer = document.getElementById('radial-menu');
 const centerPiece = document.getElementById('center-piece');
@@ -38,7 +40,7 @@ async function init() {
     applyTheme(currentState.config.activeTheme);
     centerPiece.classList.add('idle');
 
-    // IPC Triggers → Hard Rebuild
+    // IPC
     window.orbitAPI.onConfigUpdated((newConfig) => {
         currentState.config = { ...currentState.config, ...newConfig };
         applyTheme(currentState.config.activeTheme);
@@ -51,13 +53,17 @@ async function init() {
         renderOrbit();
     });
 
-    window.orbitAPI.onWindowShown(() => {
+    window.orbitAPI.onWindowShown((cursorPoint) => {
+        // Position radial at cursor
+        currentState.radialCenter.x = cursorPoint.x;
+        currentState.radialCenter.y = cursorPoint.y;
+        setRadialPosition(cursorPoint.x, cursorPoint.y);
         resetToRoot();
+        expandMenu();
     });
 
-    // ---- Interaction Handlers ----
+    // ---- Events ----
 
-    // Single click = toggle menu
     centerPiece.addEventListener('click', (e) => {
         if (currentState.isEditMode) return;
         if (e.detail === 1) {
@@ -65,7 +71,6 @@ async function init() {
         }
     });
 
-    // Double click = open settings
     centerPiece.addEventListener('dblclick', () => {
         if (currentState.isEditMode) return;
         if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
@@ -75,29 +80,27 @@ async function init() {
         openSettings();
     });
 
-    // Right click center = open add action modal
     centerPiece.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        centerPiece.style.transform = 'scale(0.94)';
-        setTimeout(() => centerPiece.style.transform = '', 120);
+        centerPiece.style.transform = 'translate(-50%, -50%) scale(0.94)';
+        setTimeout(() => centerPiece.style.transform = 'translate(-50%, -50%)', 120);
         openModal();
     });
 
-    // Right click anywhere else = go back
     document.body.addEventListener('contextmenu', (e) => {
         if (e.target.closest('.center-piece') || e.target.closest('.edit-modal-overlay')) return;
         e.preventDefault();
         goBack();
     });
 
-    // Mouse tracking
+    // Mouse tracking + hit detection for click-through
     document.addEventListener('mousemove', (e) => {
         currentState.mouseX = e.clientX;
         currentState.mouseY = e.clientY;
+        updateHitDetection(e.clientX, e.clientY);
     });
 
-    // Ctrl+Wheel = radius adjustment
     document.addEventListener('wheel', (e) => {
         if (currentState.state !== 'IDLE' && e.ctrlKey) {
             e.preventDefault();
@@ -107,7 +110,6 @@ async function init() {
         }
     }, { passive: false });
 
-    // Close modal on overlay click
     editModalOverlay.addEventListener('click', (e) => {
         if (e.target === editModalOverlay) closeModal();
     });
@@ -117,102 +119,151 @@ async function init() {
 }
 
 // ============================================
+// HIT DETECTION — Toggle click-through
+// ============================================
+
+function updateHitDetection(mx, my) {
+    if (currentState.state === 'IDLE' && !currentState.isEditMode) {
+        // Window should be fully click-through when idle
+        if (currentState.cursorInBounds) {
+            currentState.cursorInBounds = false;
+            window.orbitAPI.setIgnoreMouse(true);
+        }
+        return;
+    }
+
+    // Edit mode — entire modal area is interactive
+    if (currentState.isEditMode) {
+        if (!currentState.cursorInBounds) {
+            currentState.cursorInBounds = true;
+            window.orbitAPI.setIgnoreMouse(false);
+        }
+        return;
+    }
+
+    // Active mode — check if cursor is within radial bounds
+    const cx = currentState.radialCenter.x;
+    const cy = currentState.radialCenter.y;
+    const radius = currentState.levelStack.length > 0
+        ? (currentState.config.groupRadius || 75)
+        : (currentState.config.radius || 100);
+    const hitRadius = radius + 60; // Extra padding for item hover
+
+    const dist = Math.hypot(mx - cx, my - cy);
+    const isInside = dist <= hitRadius;
+
+    if (isInside && !currentState.cursorInBounds) {
+        currentState.cursorInBounds = true;
+        window.orbitAPI.setIgnoreMouse(false);
+    } else if (!isInside && currentState.cursorInBounds) {
+        currentState.cursorInBounds = false;
+        window.orbitAPI.setIgnoreMouse(true);
+        // Close menu when cursor leaves radial zone
+        closeMenu();
+    }
+}
+
+// ============================================
+// RADIAL POSITIONING
+// ============================================
+
+function setRadialPosition(x, y) {
+    const root = document.documentElement;
+    root.style.setProperty('--radial-x', `${x}px`);
+    root.style.setProperty('--radial-y', `${y}px`);
+    root.style.setProperty('--overlay-active', '1');
+}
+
+function clearRadialPosition() {
+    document.documentElement.style.setProperty('--overlay-active', '0');
+}
+
+// ============================================
 // HARD REBUILD RENDERER
 // ============================================
 
 function renderOrbit() {
     if (!currentState.config) return;
 
-    // 1. Wipe everything
     menuContainer.innerHTML = '';
     hideHoverLabel();
 
-    // 2. Current actions based on levelStack
     const currentActions = currentState.levelStack.length > 0
         ? currentState.levelStack[currentState.levelStack.length - 1]
         : currentState.config.actions;
 
-    // 3. If idle, just update context and bail
     if (currentState.state === 'IDLE') {
+        clearRadialPosition();
         updateCenterState();
         updateDevOverlay();
         return;
     }
 
-    // 4. Render all items from scratch
     const count = currentActions.length;
     const isNested = currentState.levelStack.length > 0;
     const radius = isNested
         ? (currentState.config.groupRadius || 75)
         : (currentState.config.radius || 100);
 
+    const cx = currentState.radialCenter.x;
+    const cy = currentState.radialCenter.y;
+
     currentActions.forEach((action, index) => {
         const item = document.createElement('div');
         item.className = `menu-item${isNested ? ' nested-item' : ''}`;
 
-        // Dynamic Icon System
+        // Dynamic Icon
         const iconEl = createIcon(action);
         item.appendChild(iconEl);
 
-        // Position calculation
+        // Position around radial center
         const angle = (index / count) * 2 * Math.PI - Math.PI / 2 + (-15 * Math.PI / 180);
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
 
         item.dataset.baseX = x;
         item.dataset.baseY = y;
-        item.style.left = `calc(50% + ${x}px - var(--item-size) / 2)`;
-        item.style.top = `calc(50% + ${y}px - var(--item-size) / 2)`;
+        item.style.left = `${cx + x - 23}px`; // 23 = item-size/2
+        item.style.top = `${cy + y - 23}px`;
 
-        // Hover label
         item.onmouseenter = () => {
             if (currentState.config.showHoverLabels) showHoverLabel(action.label);
         };
         item.onmouseleave = () => hideHoverLabel();
 
-        // Click
         item.onclick = (e) => {
             e.stopPropagation();
             handleItemClick(action, item);
         };
 
         menuContainer.appendChild(item);
-
-        // Staggered entrance
         setTimeout(() => item.classList.add('visible'),
             index * 12 * (currentState.config.animationSpeed || 1.0));
     });
 
-    // 5. Update context
     updateCenterState();
     updateDevOverlay();
 }
 
 // ============================================
 // DYNAMIC ICON SYSTEM
-// SVG file → fallback to first-letter glyph
 // ============================================
 
 function createIcon(action) {
     const iconFile = action.icon;
 
-    // If icon file specified, try loading it
     if (iconFile && iconFile !== 'default.svg') {
         const img = document.createElement('img');
         img.src = `assets/${iconFile}`;
         img.alt = action.label;
         img.draggable = false;
-
-        // On error: replace with glyph
         img.onerror = () => {
             const glyph = createGlyph(action.label);
             img.replaceWith(glyph);
         };
-
         return img;
     }
 
-    // No icon → generate glyph
     return createGlyph(action.label);
 }
 
@@ -235,7 +286,7 @@ function handleItemClick(action, element) {
 
     if (action.command && action.command.startsWith('ui:toggle-')) {
         window.orbitAPI.executeAction(action);
-        return; // Config update triggers rebuild
+        return;
     }
 
     if (action.type === 'group') {
@@ -281,6 +332,9 @@ function toggleMenu() {
 
 function expandMenu() {
     currentState.state = 'ACTIVE';
+    // Ensure mouse interaction is enabled
+    currentState.cursorInBounds = true;
+    window.orbitAPI.setIgnoreMouse(false);
     createRadialPulse();
     createPulseRing();
     renderOrbit();
@@ -290,6 +344,8 @@ function expandMenu() {
 function closeMenu() {
     currentState.state = 'IDLE';
     currentState.levelStack = [];
+    currentState.cursorInBounds = false;
+    window.orbitAPI.setIgnoreMouse(true);
     renderOrbit();
     playSound('collapse');
 }
@@ -308,16 +364,18 @@ function openModal() {
     currentState.isEditMode = true;
     editModalOverlay.classList.add('active');
     document.body.classList.add('edit-mode');
+    window.orbitAPI.setIgnoreMouse(false);
 }
 
 function closeModal() {
     currentState.isEditMode = false;
     editModalOverlay.classList.remove('active');
     document.body.classList.remove('edit-mode');
-    // Clear inputs
     document.getElementById('action-label').value = '';
     document.getElementById('action-path').value = '';
     document.getElementById('action-icon').value = '';
+    // Restore hit detection state
+    updateHitDetection(currentState.mouseX, currentState.mouseY);
 }
 
 function submitAction() {
@@ -393,11 +451,7 @@ function updateCenterState() {
 function updateDevOverlay() {
     if (currentState.config && currentState.config.devMode) {
         devOverlay.style.display = 'block';
-        const depth = currentState.levelStack.length;
-        const count = menuContainer.childElementCount;
-        const theme = currentState.config.activeTheme;
-        const radius = currentState.config.radius;
-        devOverlay.textContent = `DEPTH:${depth} | ITEMS:${count} | THEME:${theme} | R:${radius}px`;
+        devOverlay.textContent = `DEPTH:${currentState.levelStack.length} | ITEMS:${menuContainer.childElementCount} | THEME:${currentState.config.activeTheme} | R:${currentState.config.radius}px`;
     } else {
         devOverlay.style.display = 'none';
     }
@@ -409,6 +463,11 @@ function updateDevOverlay() {
 
 function showHoverLabel(text) {
     if (!text) return;
+    const cx = currentState.radialCenter.x;
+    const cy = currentState.radialCenter.y;
+    hoverLabel.style.left = `${cx}px`;
+    hoverLabel.style.top = `${cy - 60}px`;
+    hoverLabel.style.transform = 'translate(-50%, -100%)';
     hoverLabel.textContent = text;
     hoverLabel.classList.add('visible');
 }
@@ -424,6 +483,8 @@ function hideHoverLabel() {
 function createRadialPulse() {
     const pulse = document.createElement('div');
     pulse.className = 'radial-ripple';
+    pulse.style.left = `${currentState.radialCenter.x - 36}px`;
+    pulse.style.top = `${currentState.radialCenter.y - 36}px`;
     rippleContainer.appendChild(pulse);
     setTimeout(() => pulse.remove(), 300);
 }
@@ -453,18 +514,19 @@ function playSound(type) {
 
 function startParallaxLoop() {
     const loop = () => {
-        const cx = window.innerWidth / 2;
-        const cy = window.innerHeight / 2;
+        const cx = currentState.radialCenter.x;
+        const cy = currentState.radialCenter.y;
 
         currentState.parallax.x += (currentState.mouseX - cx - currentState.parallax.x) * 0.08;
         currentState.parallax.y += (currentState.mouseY - cy - currentState.parallax.y) * 0.08;
 
-        const px = currentState.parallax.x / 50;
-        const py = currentState.parallax.y / 50;
+        const px = currentState.parallax.x / 60;
+        const py = currentState.parallax.y / 60;
 
         // Center parallax
-        if (!currentState.isEditMode) {
-            centerPiece.style.transform = `translate(${px}px, ${py}px)`;
+        if (!currentState.isEditMode && currentState.state !== 'IDLE') {
+            centerPiece.style.left = `${cx + px}px`;
+            centerPiece.style.top = `${cy + py}px`;
         }
 
         // Item proximity scaling
@@ -480,14 +542,14 @@ function startParallaxLoop() {
                 let scale = 1;
                 let offset = 0;
 
-                if (dist < 110) {
-                    scale = 1 + (110 - dist) / 600;
-                    offset = (110 - dist) / 45;
+                if (dist < 100) {
+                    scale = 1 + (100 - dist) / 600;
+                    offset = (100 - dist) / 50;
                 }
 
                 const angle = Math.atan2(currentState.mouseY - iy, currentState.mouseX - ix);
-                const dx = Math.cos(angle) * offset + px * 0.4;
-                const dy = Math.sin(angle) * offset + py * 0.4;
+                const dx = Math.cos(angle) * offset + px * 0.3;
+                const dy = Math.sin(angle) * offset + py * 0.3;
 
                 item.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
             });

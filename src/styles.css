@@ -1,19 +1,18 @@
 /* ============================================
-   ORBIT RADIAL LAUNCHER — STRUCTURAL CSS
-   Clean. Immersive. Premium.
+   ORBIT — Hard Visual Reset
+   Precise. Minimal. Confident.
    ============================================ */
 
 :root {
-    --bg-base: rgba(15, 17, 21, 0.92);
+    --bg-base: rgba(12, 14, 18, 0.95);
     --accent: #00bfff;
-    --glow-idle: rgba(0, 191, 255, 0.15);
-    --glow-primary: rgba(0, 191, 255, 0.5);
-    --glow-nested: rgba(0, 191, 255, 0.25);
-    --glow-peak: rgba(0, 191, 255, 0.9);
-    --blur: 30px;
+    --glow-idle: rgba(0, 191, 255, 0.2);
+    --glow-primary: rgba(0, 191, 255, 0.6);
+    --glow-nested: rgba(0, 191, 255, 0.15);
+    --glow-peak: rgba(0, 191, 255, 0.95);
     --anim-speed: 1.0;
-    --item-size: 46px;
-    --center-size: 72px;
+    --item-size: 48px;
+    --center-size: 80px;
     --easing: cubic-bezier(0.16, 1, 0.3, 1);
     --primary-radius: 100px;
     --group-radius: 75px;
@@ -35,126 +34,21 @@ body {
 }
 
 /* ============================================
-   LAYER 1: RUNTIME OVERLAY
-   Fullscreen. Immersive. No wallpaper bleed.
+   OVERLAY — Pure transparent container
+   No blur. No dim. No background. Nothing.
    ============================================ */
 
 .orbit-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background: transparent;
+    pointer-events: none;
     z-index: 1;
 }
 
-/* Subtle noise texture */
-.orbit-overlay::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-}
-
 /* ============================================
-   CENTER PIECE — Dominant focal point
-   8% larger than items. Strongest glow.
-   ============================================ */
-
-.center-piece {
-    position: absolute;
-    width: var(--center-size);
-    height: var(--center-size);
-    background: var(--bg-base);
-    backdrop-filter: blur(var(--blur));
-    border: 2px solid rgba(255, 255, 255, 0.12);
-    border-radius: 50%;
-    z-index: 200;
-    box-shadow:
-        0 16px 48px rgba(0, 0, 0, 0.6),
-        inset 0 0 20px rgba(255, 255, 255, 0.06),
-        0 0 30px var(--glow-idle);
-    transition: all 0.3s var(--easing);
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* Ambient glow behind center */
-.center-piece::before {
-    content: '';
-    position: absolute;
-    inset: -24px;
-    background: radial-gradient(circle, var(--glow-idle) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: -1;
-    transition: all 0.3s var(--easing);
-}
-
-/* Inner ring indicator */
-.center-piece::after {
-    content: '';
-    position: absolute;
-    width: 32%;
-    height: 32%;
-    border: 2px solid var(--accent);
-    border-radius: 50%;
-    opacity: 0.25;
-    transition: all 0.3s var(--easing);
-}
-
-/* States */
-.center-piece.idle {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px var(--glow-idle);
-}
-
-.center-piece:hover {
-    transform: scale(1.06);
-    border-color: rgba(0, 191, 255, 0.7);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 40px var(--glow-primary);
-}
-
-.center-piece:hover::after {
-    opacity: 0.75;
-    transform: scale(1.1);
-}
-
-.center-piece.expanded {
-    border-color: var(--accent);
-    animation: center-pulse 2s ease-in-out infinite;
-}
-
-.center-piece.expanded::before {
-    inset: -32px;
-    background: radial-gradient(circle, var(--glow-primary) 0%, transparent 70%);
-}
-
-@keyframes center-pulse {
-    0%, 100% { box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 25px var(--glow-primary); }
-    50% { box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 45px var(--glow-primary); }
-}
-
-/* Child view — back arrow indicator */
-.center-piece.child-view::after {
-    width: 28%;
-    height: 28%;
-    border: none;
-    border-left: 2.5px solid var(--accent);
-    border-top: 2.5px solid var(--accent);
-    transform: rotate(-45deg) translate(2px, 2px);
-    border-radius: 0;
-    opacity: 0.85;
-}
-
-/* ============================================
-   RADIAL MENU ITEMS
-   Clean circles. Unique icons. Proper hierarchy.
+   RADIAL WRAPPER — Outer light emission
+   The only visual presence on screen.
    ============================================ */
 
 .radial-menu {
@@ -163,15 +57,129 @@ body {
     height: 100%;
     pointer-events: none;
     z-index: 150;
+    filter: drop-shadow(0 0 35px rgba(0, 191, 255, 0.3));
 }
+
+/* ============================================
+   CENTER PIECE — Dominant. 10% larger. Strong glow.
+   ============================================ */
+
+.center-piece {
+    position: absolute;
+    left: var(--radial-x, 50%);
+    top: var(--radial-y, 50%);
+    transform: translate(-50%, -50%);
+    width: var(--center-size);
+    height: var(--center-size);
+    background: var(--bg-base);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    z-index: 200;
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow:
+        0 0 40px var(--glow-idle),
+        0 8px 32px rgba(0, 0, 0, 0.7),
+        inset 0 0 12px rgba(255, 255, 255, 0.04);
+    transition: box-shadow 0.25s var(--easing), border-color 0.25s var(--easing);
+}
+
+/* Ambient halo — soft radial glow */
+.center-piece::before {
+    content: '';
+    position: absolute;
+    inset: -30px;
+    background: radial-gradient(circle, var(--glow-idle) 0%, transparent 65%);
+    pointer-events: none;
+    z-index: -1;
+    transition: inset 0.3s var(--easing), background 0.3s var(--easing);
+}
+
+/* Inner ring — animates on activation */
+.center-piece::after {
+    content: '';
+    position: absolute;
+    width: 36%;
+    height: 36%;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    opacity: 0.2;
+    transition: all 0.3s var(--easing);
+}
+
+/* --- States --- */
+
+.center-piece.idle {
+    box-shadow:
+        0 0 25px var(--glow-idle),
+        0 6px 20px rgba(0, 0, 0, 0.5),
+        inset 0 0 10px rgba(255, 255, 255, 0.03);
+}
+
+.center-piece:hover {
+    border-color: var(--accent);
+    box-shadow:
+        0 0 50px var(--glow-primary),
+        0 12px 40px rgba(0, 0, 0, 0.7),
+        inset 0 0 15px rgba(255, 255, 255, 0.05);
+}
+
+.center-piece:hover::after {
+    opacity: 0.7;
+    transform: scale(1.15);
+}
+
+.center-piece.expanded {
+    border-color: var(--accent);
+    animation: center-breathe 2.5s ease-in-out infinite;
+}
+
+.center-piece.expanded::before {
+    inset: -40px;
+    background: radial-gradient(circle, var(--glow-primary) 0%, transparent 60%);
+}
+
+.center-piece.expanded::after {
+    opacity: 0.6;
+    animation: inner-ring-spin 4s linear infinite;
+}
+
+@keyframes center-breathe {
+    0%, 100% { box-shadow: 0 0 35px var(--glow-primary), 0 8px 32px rgba(0,0,0,0.7); }
+    50%      { box-shadow: 0 0 55px var(--glow-primary), 0 8px 32px rgba(0,0,0,0.7); }
+}
+
+@keyframes inner-ring-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* Child view — back arrow */
+.center-piece.child-view::after {
+    width: 26%;
+    height: 26%;
+    border: none;
+    border-left: 2.5px solid var(--accent);
+    border-top: 2.5px solid var(--accent);
+    transform: rotate(-45deg) translate(2px, 2px);
+    border-radius: 0;
+    opacity: 0.85;
+    animation: none;
+}
+
+/* ============================================
+   MENU ITEMS — Tight. Clean. Crisp glow.
+   ============================================ */
 
 .menu-item {
     position: absolute;
     width: var(--item-size);
     height: var(--item-size);
     background: var(--bg-base);
-    backdrop-filter: blur(calc(var(--blur) * 0.8));
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
     display: flex;
     justify-content: center;
@@ -179,14 +187,16 @@ body {
     cursor: pointer;
     pointer-events: auto;
     opacity: 0;
-    transform: scale(0.4);
+    transform: scale(0.3);
     z-index: 150;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 0 12px var(--glow-idle);
+    box-shadow:
+        0 0 15px var(--glow-idle),
+        0 4px 16px rgba(0, 0, 0, 0.5);
     transition:
-        transform 0.28s var(--easing),
-        box-shadow 0.28s var(--easing),
-        opacity 0.28s var(--easing),
-        border-color 0.2s var(--easing);
+        transform 0.22s var(--easing),
+        box-shadow 0.22s var(--easing),
+        opacity 0.22s var(--easing),
+        border-color 0.15s var(--easing);
 }
 
 .menu-item.visible {
@@ -197,41 +207,50 @@ body {
 .menu-item.nested-item {
     width: calc(var(--item-size) * 0.88);
     height: calc(var(--item-size) * 0.88);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 0 8px var(--glow-nested);
-    border-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 8px var(--glow-nested), 0 3px 10px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.06);
+    opacity: 0;
 }
 
+.menu-item.nested-item.visible {
+    opacity: 0.85;
+}
+
+/* Hover — sharp, crisp glow */
 .menu-item:hover {
-    transform: scale(1.18) !important;
+    transform: scale(1.15) !important;
     z-index: 160;
     border-color: var(--accent);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 28px var(--glow-primary);
+    box-shadow:
+        0 0 30px var(--glow-primary),
+        0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
+/* Click pulse */
 .menu-item:active {
-    transform: scale(0.92) !important;
-    box-shadow: 0 0 40px var(--glow-peak);
+    transform: scale(0.9) !important;
+    box-shadow: 0 0 45px var(--glow-peak);
     border-color: var(--accent);
 }
 
-/* Icon inside item */
+/* Icons */
 .menu-item img,
 .menu-item svg {
     width: 22px;
     height: 22px;
     pointer-events: none;
     filter: brightness(0) invert(1);
-    opacity: 0.85;
-    transition: all 0.2s var(--easing);
+    opacity: 0.8;
+    transition: opacity 0.15s var(--easing), transform 0.15s var(--easing);
 }
 
 .menu-item:hover img,
 .menu-item:hover svg {
     opacity: 1;
-    transform: scale(1.1);
+    transform: scale(1.08);
 }
 
-/* Auto-generated glyph fallback */
+/* Glyph fallback */
 .menu-item .glyph-icon {
     width: 22px;
     height: 22px;
@@ -240,51 +259,45 @@ body {
     align-items: center;
     font-size: 16px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.8);
     text-transform: uppercase;
     pointer-events: none;
-    font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
-/* Shake animation for empty groups */
+/* Shake */
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
-    20% { transform: translateX(-4px); }
-    40% { transform: translateX(4px); }
-    60% { transform: translateX(-3px); }
-    80% { transform: translateX(3px); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
 }
 
 .menu-item.shake {
-    animation: shake 0.4s ease;
+    animation: shake 0.35s ease;
 }
 
 /* ============================================
-   ANIMATIONS — Pulse, Ripple
+   EFFECTS — Minimal pulse + ripple
    ============================================ */
 
 .ripple-container {
     position: absolute;
     width: 100%;
     height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     pointer-events: none;
     z-index: 100;
 }
 
 .pulse-ring {
     position: absolute;
-    border: 2px solid var(--accent);
+    border: 1.5px solid var(--accent);
     border-radius: 50%;
     pointer-events: none;
-    animation: pulse-out 0.4s var(--easing) forwards;
+    animation: pulse-out 0.35s var(--easing) forwards;
 }
 
 @keyframes pulse-out {
-    from { transform: scale(1); opacity: 0.7; }
-    to { transform: scale(1.5); opacity: 0; }
+    from { transform: scale(1); opacity: 0.6; }
+    to   { transform: scale(1.6); opacity: 0; }
 }
 
 .radial-ripple {
@@ -294,75 +307,67 @@ body {
     border: 1px solid var(--accent);
     border-radius: 50%;
     pointer-events: none;
-    animation: ripple-out 0.3s var(--easing) forwards;
+    animation: ripple-out 0.25s var(--easing) forwards;
 }
 
 @keyframes ripple-out {
-    from { transform: scale(1); opacity: 0.4; }
-    to { transform: scale(2.8); opacity: 0; }
+    from { transform: scale(1); opacity: 0.35; }
+    to   { transform: scale(2.5); opacity: 0; }
 }
 
 /* ============================================
-   HOVER LABEL — Floating above center
+   HOVER LABEL — Floats above radial center
    ============================================ */
 
 .hover-label {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, calc(-50% - 60px));
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 13px;
-    font-weight: 500;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(12px);
-    padding: 5px 14px;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    position: absolute;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(10, 12, 16, 0.85);
+    padding: 4px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s var(--easing), transform 0.2s var(--easing);
+    transition: opacity 0.15s var(--easing);
     z-index: 500;
     white-space: nowrap;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
 }
 
 .hover-label.visible {
     opacity: 1;
-    transform: translate(-50%, calc(-50% - 72px));
 }
 
 /* ============================================
-   DEV OVERLAY — Minimal, unobtrusive
+   DEV OVERLAY — Bottom-left, tiny
    ============================================ */
 
 .dev-overlay {
     position: fixed;
-    bottom: 16px;
-    left: 16px;
-    background: rgba(0, 0, 0, 0.75);
-    padding: 6px 12px;
-    border-radius: 6px;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 4px 10px;
+    border-radius: 4px;
     border-left: 2px solid var(--accent);
     color: var(--accent);
-    font-size: 10px;
-    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 9px;
+    font-family: 'Consolas', monospace;
     pointer-events: none;
     z-index: 600;
     display: none;
-    letter-spacing: 0.5px;
 }
 
 /* ============================================
-   LAYER 2: EDIT MODE MODAL
-   Glass. Centered. No white elements.
+   EDIT MODAL — Glass panel, no blur on bg
    ============================================ */
 
 .edit-modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.4);
     display: none;
     justify-content: center;
     align-items: center;
@@ -374,63 +379,60 @@ body {
 }
 
 .edit-modal {
-    width: 380px;
-    background: rgba(20, 22, 28, 0.92);
+    width: 360px;
+    background: rgba(16, 18, 24, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    box-shadow:
-        0 24px 80px rgba(0, 0, 0, 0.6),
-        0 0 1px rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
     overflow: hidden;
-    animation: modal-in 0.25s var(--easing);
+    animation: modal-in 0.2s var(--easing);
 }
 
 @keyframes modal-in {
-    from { opacity: 0; transform: scale(0.92) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+    from { opacity: 0; transform: scale(0.94) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .edit-modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .edit-modal-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 0.3px;
 }
 
 .edit-modal-close {
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 20px;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 18px;
     cursor: pointer;
     padding: 0 4px;
-    transition: color 0.2s;
+    transition: color 0.15s;
     line-height: 1;
 }
 
 .edit-modal-close:hover {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.75);
 }
 
 .edit-modal-body {
-    padding: 16px 20px;
+    padding: 14px 18px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
 }
 
 .edit-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.4);
     text-transform: uppercase;
     letter-spacing: 0.8px;
     margin-top: 4px;
@@ -438,54 +440,53 @@ body {
 
 .edit-input {
     width: 100%;
-    padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
+    padding: 9px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 7px;
     color: rgba(255, 255, 255, 0.9);
     font-size: 13px;
     font-family: 'Segoe UI', system-ui, sans-serif;
     outline: none;
-    transition: border-color 0.2s, background 0.2s;
+    transition: border-color 0.15s;
 }
 
 .edit-input::placeholder {
-    color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.18);
 }
 
 .edit-input:focus {
     border-color: var(--accent);
-    background: rgba(255, 255, 255, 0.07);
 }
 
 .edit-modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    padding: 12px 20px 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 10px 18px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .edit-btn {
-    padding: 8px 18px;
+    padding: 7px 16px;
     border: none;
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: 7px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s var(--easing);
+    transition: all 0.15s var(--easing);
     font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
 .edit-btn.secondary {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .edit-btn.secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.75);
 }
 
 .edit-btn.primary {
@@ -494,15 +495,12 @@ body {
 }
 
 .edit-btn.primary:hover {
-    filter: brightness(1.15);
-    box-shadow: 0 4px 16px rgba(0, 191, 255, 0.3);
+    filter: brightness(1.1);
+    box-shadow: 0 3px 12px rgba(0, 191, 255, 0.25);
 }
 
-/* ============================================
-   EDIT MODE — Dim radial when modal is open
-   ============================================ */
-
+/* Edit mode — dim radial */
 body.edit-mode .orbit-overlay {
-    opacity: 0.4;
+    opacity: 0.35;
     pointer-events: none;
 }

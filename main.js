@@ -77,9 +77,14 @@ function watchFiles() {
 }
 
 function createWindow() {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 800,
+    width: width,
+    height: height,
+    x: 0,
+    y: 0,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -87,6 +92,7 @@ function createWindow() {
     show: false,
     resizable: false,
     movable: false,
+    hasShadow: false,
     backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -96,9 +102,9 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
-  mainWindow.on('blur', () => {
-    if (!config.devMode) mainWindow.hide();
-  });
+
+  // Click-through by default — renderer toggles this
+  mainWindow.setIgnoreMouseEvents(true, { forward: true });
 
   setupIpcHandlers();
 }
@@ -106,24 +112,39 @@ function createWindow() {
 function showWindow() {
   if (!mainWindow) return;
   const cursorPoint = screen.getCursorScreenPoint();
-  const winBounds = mainWindow.getBounds();
-  mainWindow.setPosition(
-    Math.round(cursorPoint.x - winBounds.width / 2),
-    Math.round(cursorPoint.y - winBounds.height / 2)
-  );
+  // Send cursor position so renderer knows where to center
   mainWindow.show();
-  mainWindow.focus();
-  mainWindow.webContents.send('window-shown');
+  mainWindow.setIgnoreMouseEvents(true, { forward: true });
+  mainWindow.webContents.send('window-shown', cursorPoint);
 }
 
 function setupIpcHandlers() {
   ipcMain.handle('get-config', () => config);
   ipcMain.handle('get-themes', () => themes);
-  ipcMain.on('hide-app', () => mainWindow.hide());
+
+  ipcMain.on('hide-app', () => {
+    mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    mainWindow.hide();
+  });
+
+  // Mouse event toggle — renderer controls this
+  ipcMain.on('set-ignore-mouse', (event, ignore) => {
+    if (!mainWindow) return;
+    if (ignore) {
+      mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    } else {
+      mainWindow.setIgnoreMouseEvents(false);
+    }
+  });
+
   ipcMain.on('execute-action', (event, action) => {
     handleAction(action);
-    if (!config.devMode) mainWindow.hide();
+    if (!config.devMode) {
+      mainWindow.setIgnoreMouseEvents(true, { forward: true });
+      mainWindow.hide();
+    }
   });
+
   ipcMain.on('update-radius', (event, radius) => {
     updateConfig({ radius: radius, primaryRadius: radius });
   });

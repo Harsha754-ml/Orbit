@@ -8,7 +8,8 @@ contextBridge.exposeInMainWorld('orbitAPI', {
   playSound: (soundType) => ipcRenderer.send('play-sound', soundType),
   onConfigUpdated: (callback) => ipcRenderer.on('config-updated', (event, config) => callback(config)),
   onThemesUpdated: (callback) => ipcRenderer.on('themes-updated', (event, themes) => callback(themes)),
-  onWindowShown: (callback) => ipcRenderer.on('window-shown', () => callback()),
+  onWindowShown: (callback) => ipcRenderer.on('window-shown', (event, cursorPoint) => callback(cursorPoint)),
   updateRadius: (radius) => ipcRenderer.send('update-radius', radius),
-  addAction: (action) => ipcRenderer.send('add-action', action)
+  addAction: (action) => ipcRenderer.send('add-action', action),
+  setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore)
 });
