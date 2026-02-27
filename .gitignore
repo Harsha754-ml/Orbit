@@ -1,8 +1,19 @@
+# Core Build
 node_modules/
 dist/
 build/
+*.exe
 *.log
+
+# Project Files
+agents.md
+instructions.md
+skills.md
+assets/
+
+# System
 .DS_Store
 .vscode/
+
+# Config
 package-lock.json
-orbit.exe
