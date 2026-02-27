@@ -3,31 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orbit Premium</title>
+    <title>Orbit</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="orbit-container" class="orbit-container">
+    <!-- Layer 1: Runtime Overlay -->
+    <div id="orbit-overlay" class="orbit-overlay">
         <div id="ripple-container" class="ripple-container"></div>
-        <div id="dev-overlay" class="dev-overlay"></div>
-        <div id="hover-label" class="hover-label"></div>
         <div id="center-piece" class="center-piece"></div>
         <div id="radial-menu" class="radial-menu"></div>
+        <div id="hover-label" class="hover-label"></div>
+        <div id="dev-overlay" class="dev-overlay"></div>
     </div>
 
-    <!-- Dev Mode Add Action Modal -->
-    <div id="modal-overlay" class="modal-overlay">
-        <div class="modal">
-            <h3>Add Custom Action</h3>
-            <input type="text" id="action-label" placeholder="Action Label (e.g. My App)">
-            <input type="text" id="action-path" placeholder="Path or URL">
-            <input type="text" id="action-icon" placeholder="Icon Filename (optional)">
-            <div class="modal-btns">
-                <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
-                <button class="modal-btn primary" onclick="submitAction()">Add Action</button>
+    <!-- Layer 2: Edit Mode Modal (conditionally rendered) -->
+    <div id="edit-modal-overlay" class="edit-modal-overlay">
+        <div class="edit-modal">
+            <div class="edit-modal-header">
+                <span class="edit-modal-title">Add Custom Action</span>
+                <button class="edit-modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="edit-modal-body">
+                <label class="edit-label">Label</label>
+                <input type="text" id="action-label" class="edit-input" placeholder="e.g. My App">
+                <label class="edit-label">Path or URL</label>
+                <input type="text" id="action-path" class="edit-input" placeholder="C:\\path\\to\\app.exe or https://...">
+                <label class="edit-label">Icon (optional)</label>
+                <input type="text" id="action-icon" class="edit-input" placeholder="e.g. custom.svg">
+            </div>
+            <div class="edit-modal-footer">
+                <button class="edit-btn secondary" onclick="closeModal()">Cancel</button>
+                <button class="edit-btn primary" onclick="submitAction()">Add Action</button>
             </div>
         </div>
     </div>
+
     <audio id="sound-expand" src="assets/expand.mp3"></audio>
     <audio id="sound-collapse" src="assets/collapse.mp3"></audio>
     <audio id="sound-execute" src="assets/execute.mp3"></audio>

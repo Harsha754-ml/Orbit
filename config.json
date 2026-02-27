@@ -35,24 +35,9 @@
       "label": "Power",
       "icon": "shutdown.svg",
       "children": [
-        {
-          "type": "command",
-          "label": "Shutdown",
-          "icon": "shutdown.svg",
-          "command": "shutdown /s /t 10"
-        },
-        {
-          "type": "command",
-          "label": "Restart",
-          "icon": "restart.svg",
-          "command": "shutdown /r /t 10"
-        },
-        {
-          "type": "command",
-          "label": "Lock",
-          "icon": "lock.svg",
-          "command": "rundll32.exe user32.dll,LockWorkStation"
-        }
+        { "type": "command", "label": "Shutdown", "icon": "shutdown.svg", "command": "shutdown /s /t 10" },
+        { "type": "command", "label": "Restart", "icon": "restart.svg", "command": "shutdown /r /t 10" },
+        { "type": "command", "label": "Lock", "icon": "lock.svg", "command": "rundll32.exe user32.dll,LockWorkStation" }
       ]
     },
     {
@@ -64,24 +49,19 @@
     {
       "type": "group",
       "label": "Custom",
-      "icon": "terminal.svg",
+      "icon": "custom.svg",
       "children": [
-        {
-          "type": "command",
-          "label": "Add New",
-          "icon": "terminal.svg",
-          "command": "ui:open-add-action"
-        }
+        { "type": "command", "label": "Add New", "icon": "plus.svg", "command": "ui:open-add-action" }
       ]
     },
     {
       "type": "group",
       "label": "Settings",
-      "icon": "terminal.svg",
+      "icon": "settings.svg",
       "children": [
-        { "type": "command", "label": "Toggle Labels", "icon": "terminal.svg", "command": "ui:toggle-labels" },
-        { "type": "command", "label": "Toggle Sound", "icon": "terminal.svg", "command": "ui:toggle-sound" },
-        { "type": "command", "label": "Toggle DevMode", "icon": "terminal.svg", "command": "ui:toggle-dev" }
+        { "type": "command", "label": "Toggle Labels", "icon": "label.svg", "command": "ui:toggle-labels" },
+        { "type": "command", "label": "Toggle Sound", "icon": "sound.svg", "command": "ui:toggle-sound" },
+        { "type": "command", "label": "Toggle DevMode", "icon": "code.svg", "command": "ui:toggle-dev" }
       ]
     },
     {
@@ -89,16 +69,16 @@
       "label": "Themes",
       "icon": "themes.svg",
       "children": [
-        { "type": "command", "label": "Dark Neon", "icon": "terminal.svg", "command": "theme:Dark Neon" },
-        { "type": "command", "label": "Minimal Frost", "icon": "terminal.svg", "command": "theme:Minimal Frost" },
-        { "type": "command", "label": "Cyber Blue", "icon": "terminal.svg", "command": "theme:Cyber Blue" },
-        { "type": "command", "label": "Mono Glass", "icon": "terminal.svg", "command": "theme:Mono Glass" }
+        { "type": "command", "label": "Dark Neon", "icon": "themes.svg", "command": "theme:Dark Neon" },
+        { "type": "command", "label": "Minimal Frost", "icon": "themes.svg", "command": "theme:Minimal Frost" },
+        { "type": "command", "label": "Cyber Blue", "icon": "themes.svg", "command": "theme:Cyber Blue" },
+        { "type": "command", "label": "Mono Glass", "icon": "themes.svg", "command": "theme:Mono Glass" }
       ]
     },
     {
       "type": "custom",
       "label": "Web Search",
-      "icon": "terminal.svg",
+      "icon": "web.svg",
       "path": "https://www.google.com"
     }
   ]

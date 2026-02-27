@@ -1,106 +1,125 @@
-// Single Source of Truth
+// ============================================
+// ORBIT RENDERER — Hard Rebuild Architecture
+// Single Source of Truth. Clean. Immersive.
+// ============================================
+
+// STATE
 let currentState = {
     config: null,
     themes: [],
-    levelStack: [], // Stack of action arrays (nesting history)
-    state: 'IDLE',  // IDLE, ACTIVE, TRANSITIONING
+    levelStack: [],
+    state: 'IDLE',
+    isEditMode: false,
     mouseX: 0,
     mouseY: 0,
-    parallax: { x: 0, y: 0 },
-    activeHoverItem: null
+    parallax: { x: 0, y: 0 }
 };
 
+// DOM REFS (Clean DOM Contract)
+const overlay = document.getElementById('orbit-overlay');
 const menuContainer = document.getElementById('radial-menu');
 const centerPiece = document.getElementById('center-piece');
 const rippleContainer = document.getElementById('ripple-container');
 const devOverlay = document.getElementById('dev-overlay');
 const hoverLabel = document.getElementById('hover-label');
+const editModalOverlay = document.getElementById('edit-modal-overlay');
 
 let animationFrame = null;
 let clickTimer = null;
 
+// ============================================
+// INIT
+// ============================================
+
 async function init() {
     currentState.config = await window.orbitAPI.getConfig();
     currentState.themes = await window.orbitAPI.getThemes();
-    
+
     applyTheme(currentState.config.activeTheme);
     centerPiece.classList.add('idle');
 
-    // Register IPC Triggers
+    // IPC Triggers → Hard Rebuild
     window.orbitAPI.onConfigUpdated((newConfig) => {
         currentState.config = { ...currentState.config, ...newConfig };
-        resetToRoot(); // Hard reset on config change
+        applyTheme(currentState.config.activeTheme);
+        resetToRoot();
     });
-    
+
     window.orbitAPI.onThemesUpdated((newThemes) => {
         currentState.themes = newThemes;
         applyTheme(currentState.config.activeTheme);
-        renderOrbit(); // Rebuild with new theme colors
+        renderOrbit();
     });
 
     window.orbitAPI.onWindowShown(() => {
         resetToRoot();
     });
 
-    // Centralized Interaction Handlers
+    // ---- Interaction Handlers ----
+
+    // Single click = toggle menu
     centerPiece.addEventListener('click', (e) => {
+        if (currentState.isEditMode) return;
         if (e.detail === 1) {
-            clickTimer = setTimeout(() => {
-                toggleMenu();
-            }, 250);
+            clickTimer = setTimeout(() => toggleMenu(), 250);
         }
     });
-    
-    centerPiece.addEventListener('dblclick', (e) => {
-        if (clickTimer) {
-            clearTimeout(clickTimer);
-            clickTimer = null;
-        }
-        // Visual Feedback
+
+    // Double click = open settings
+    centerPiece.addEventListener('dblclick', () => {
+        if (currentState.isEditMode) return;
+        if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
         centerPiece.style.borderColor = 'var(--accent)';
         centerPiece.style.boxShadow = '0 0 50px var(--accent)';
-        setTimeout(() => {
-            centerPiece.style.borderColor = '';
-            centerPiece.style.boxShadow = '';
-        }, 200);
-        
+        setTimeout(() => { centerPiece.style.borderColor = ''; centerPiece.style.boxShadow = ''; }, 200);
         openSettings();
     });
 
+    // Right click center = open add action modal
     centerPiece.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        centerPiece.style.transform = 'scale(0.95)';
-        setTimeout(() => centerPiece.style.transform = '', 100);
+        centerPiece.style.transform = 'scale(0.94)';
+        setTimeout(() => centerPiece.style.transform = '', 120);
         openModal();
     });
 
+    // Right click anywhere else = go back
     document.body.addEventListener('contextmenu', (e) => {
-        if (e.target.closest('.center-piece')) return;
+        if (e.target.closest('.center-piece') || e.target.closest('.edit-modal-overlay')) return;
         e.preventDefault();
         goBack();
     });
 
+    // Mouse tracking
     document.addEventListener('mousemove', (e) => {
         currentState.mouseX = e.clientX;
         currentState.mouseY = e.clientY;
     });
 
+    // Ctrl+Wheel = radius adjustment
     document.addEventListener('wheel', (e) => {
         if (currentState.state !== 'IDLE' && e.ctrlKey) {
             e.preventDefault();
             const delta = e.deltaY > 0 ? -10 : 10;
-            const newRadius = Math.max(50, Math.min(300, (currentState.config.radius || 100) + delta));
-            window.orbitAPI.updateRadius(newRadius);
-            // Config update will trigger full rebuild
+            const nr = Math.max(50, Math.min(300, (currentState.config.radius || 100) + delta));
+            window.orbitAPI.updateRadius(nr);
         }
     }, { passive: false });
 
+    // Close modal on overlay click
+    editModalOverlay.addEventListener('click', (e) => {
+        if (e.target === editModalOverlay) closeModal();
+    });
+
     startParallaxLoop();
-    renderOrbit(); // Initial empty render
+    renderOrbit();
 }
 
+// ============================================
 // HARD REBUILD RENDERER
+// ============================================
+
 function renderOrbit() {
     if (!currentState.config) return;
 
@@ -108,75 +127,105 @@ function renderOrbit() {
     menuContainer.innerHTML = '';
     hideHoverLabel();
 
-    // 2. Identify Current Actions
-    const currentActions = currentState.levelStack.length > 0 
-        ? currentState.levelStack[currentState.levelStack.length - 1] 
+    // 2. Current actions based on levelStack
+    const currentActions = currentState.levelStack.length > 0
+        ? currentState.levelStack[currentState.levelStack.length - 1]
         : currentState.config.actions;
 
+    // 3. If idle, just update context and bail
     if (currentState.state === 'IDLE') {
         updateCenterState();
-        updateOrbitalPaths();
         updateDevOverlay();
         return;
     }
 
-    // 3. Render Items from Scratch
+    // 4. Render all items from scratch
     const count = currentActions.length;
-    const radius = currentState.levelStack.length > 0 
-        ? (currentState.config.groupRadius || 75) 
+    const isNested = currentState.levelStack.length > 0;
+    const radius = isNested
+        ? (currentState.config.groupRadius || 75)
         : (currentState.config.radius || 100);
 
     currentActions.forEach((action, index) => {
         const item = document.createElement('div');
-        item.className = `menu-item ${currentState.levelStack.length > 0 ? 'nested-item' : ''}`;
-        
-        const icon = document.createElement('img');
-        const iconPath = `assets/${action.icon || 'default.svg'}`;
-        icon.src = iconPath;
-        icon.onerror = () => { icon.src = 'assets/terminal.svg'; };
-        item.appendChild(icon);
-        
-        if (currentState.config.devMode) {
-            const label = document.createElement('div');
-            label.className = 'item-label';
-            label.textContent = action.label;
-            item.appendChild(label);
-        }
+        item.className = `menu-item${isNested ? ' nested-item' : ''}`;
 
+        // Dynamic Icon System
+        const iconEl = createIcon(action);
+        item.appendChild(iconEl);
+
+        // Position calculation
         const angle = (index / count) * 2 * Math.PI - Math.PI / 2 + (-15 * Math.PI / 180);
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
-        
+
         item.dataset.baseX = x;
         item.dataset.baseY = y;
-        item.style.left = `calc(50% + ${x}px - var(--item-size)/2)`;
-        item.style.top = `calc(50% + ${y}px - var(--item-size)/2)`;
-        
+        item.style.left = `calc(50% + ${x}px - var(--item-size) / 2)`;
+        item.style.top = `calc(50% + ${y}px - var(--item-size) / 2)`;
+
+        // Hover label
         item.onmouseenter = () => {
             if (currentState.config.showHoverLabels) showHoverLabel(action.label);
-            currentState.activeHoverItem = item;
         };
-        item.onmouseleave = () => {
-            hideHoverLabel();
-            currentState.activeHoverItem = null;
-        };
-        
+        item.onmouseleave = () => hideHoverLabel();
+
+        // Click
         item.onclick = (e) => {
             e.stopPropagation();
             handleItemClick(action, item);
         };
-        
+
         menuContainer.appendChild(item);
-        
-        // Finalize appearance
-        setTimeout(() => item.classList.add('visible'), index * 10 * (currentState.config.animationSpeed || 1.0));
+
+        // Staggered entrance
+        setTimeout(() => item.classList.add('visible'),
+            index * 12 * (currentState.config.animationSpeed || 1.0));
     });
 
-    // 4. Update UI Context
+    // 5. Update context
     updateCenterState();
-    updateOrbitalPaths();
     updateDevOverlay();
 }
+
+// ============================================
+// DYNAMIC ICON SYSTEM
+// SVG file → fallback to first-letter glyph
+// ============================================
+
+function createIcon(action) {
+    const iconFile = action.icon;
+
+    // If icon file specified, try loading it
+    if (iconFile && iconFile !== 'default.svg') {
+        const img = document.createElement('img');
+        img.src = `assets/${iconFile}`;
+        img.alt = action.label;
+        img.draggable = false;
+
+        // On error: replace with glyph
+        img.onerror = () => {
+            const glyph = createGlyph(action.label);
+            img.replaceWith(glyph);
+        };
+
+        return img;
+    }
+
+    // No icon → generate glyph
+    return createGlyph(action.label);
+}
+
+function createGlyph(label) {
+    const glyph = document.createElement('div');
+    glyph.className = 'glyph-icon';
+    glyph.textContent = (label || '?').charAt(0).toUpperCase();
+    return glyph;
+}
+
+// ============================================
+// ACTION HANDLER
+// ============================================
 
 function handleItemClick(action, element) {
     if (action.command === 'ui:open-add-action') {
@@ -186,7 +235,7 @@ function handleItemClick(action, element) {
 
     if (action.command && action.command.startsWith('ui:toggle-')) {
         window.orbitAPI.executeAction(action);
-        return; // Config change will trigger rebuild
+        return; // Config update triggers rebuild
     }
 
     if (action.type === 'group') {
@@ -202,13 +251,17 @@ function handleItemClick(action, element) {
     }
 }
 
-// NAVIGATION MODEL
+// ============================================
+// NAVIGATION
+// ============================================
+
 function enterGroup(children) {
     currentState.levelStack.push(children);
-    renderOrbit(); // Hard rebuild for nested level
+    renderOrbit();
 }
 
 function goBack() {
+    if (currentState.isEditMode) { closeModal(); return; }
     if (currentState.levelStack.length > 0) {
         currentState.levelStack.pop();
         renderOrbit();
@@ -230,27 +283,80 @@ function expandMenu() {
     currentState.state = 'ACTIVE';
     createRadialPulse();
     createPulseRing();
-    renderOrbit(); // Full reconstruction
+    renderOrbit();
     playSound('expand');
 }
 
 function closeMenu() {
     currentState.state = 'IDLE';
     currentState.levelStack = [];
-    renderOrbit(); // Full reconstruction to empty state
+    renderOrbit();
     playSound('collapse');
 }
 
 function resetToRoot() {
     currentState.levelStack = [];
-    currentState.state = currentState.state === 'IDLE' ? 'IDLE' : 'ACTIVE';
+    if (currentState.state !== 'IDLE') currentState.state = 'ACTIVE';
     renderOrbit();
 }
+
+// ============================================
+// EDIT MODE
+// ============================================
+
+function openModal() {
+    currentState.isEditMode = true;
+    editModalOverlay.classList.add('active');
+    document.body.classList.add('edit-mode');
+}
+
+function closeModal() {
+    currentState.isEditMode = false;
+    editModalOverlay.classList.remove('active');
+    document.body.classList.remove('edit-mode');
+    // Clear inputs
+    document.getElementById('action-label').value = '';
+    document.getElementById('action-path').value = '';
+    document.getElementById('action-icon').value = '';
+}
+
+function submitAction() {
+    const label = document.getElementById('action-label').value.trim();
+    const path = document.getElementById('action-path').value.trim();
+    const icon = document.getElementById('action-icon').value.trim();
+    if (!label || !path) return;
+
+    window.orbitAPI.addAction({
+        type: 'custom',
+        label: label,
+        path: path,
+        icon: icon || ''
+    });
+    closeModal();
+}
+
+// ============================================
+// SETTINGS
+// ============================================
+
+function openSettings() {
+    const settingsGroup = currentState.config.actions.find(a => a.label === 'Settings');
+    if (!settingsGroup) return;
+    if (currentState.state === 'IDLE') expandMenu();
+    setTimeout(() => {
+        currentState.levelStack = [settingsGroup.children];
+        renderOrbit();
+    }, 100);
+}
+
+// ============================================
+// THEME
+// ============================================
 
 function applyTheme(themeName) {
     const theme = currentState.themes.find(t => t.name === themeName);
     if (!theme) return;
-    
+
     const root = document.documentElement;
     root.style.setProperty('--bg-base', theme.base);
     root.style.setProperty('--accent', theme.accent);
@@ -260,15 +366,18 @@ function applyTheme(themeName) {
     root.style.setProperty('--glow-peak', `rgba(${hexToRgb(theme.accent)}, 0.9)`);
     root.style.setProperty('--blur', theme.blur);
     root.style.setProperty('--anim-speed', theme.speed);
-    
-    document.documentElement.style.setProperty('--primary-radius', `${currentState.config.primaryRadius || 100}px`);
-    document.documentElement.style.setProperty('--group-radius', `${currentState.config.groupRadius || 75}px`);
+    root.style.setProperty('--primary-radius', `${currentState.config.primaryRadius || 100}px`);
+    root.style.setProperty('--group-radius', `${currentState.config.groupRadius || 75}px`);
 }
 
 function hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '0, 191, 255';
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? `${parseInt(r[1], 16)}, ${parseInt(r[2], 16)}, ${parseInt(r[3], 16)}` : '0, 191, 255';
 }
+
+// ============================================
+// UI STATE
+// ============================================
 
 function updateCenterState() {
     centerPiece.classList.remove('idle', 'expanded', 'child-view');
@@ -281,92 +390,23 @@ function updateCenterState() {
     }
 }
 
-function updateOrbitalPaths() {
-    const primaryPath = document.getElementById('orbital-path-primary');
-    const nestedPath = document.getElementById('orbital-path-nested');
-    if (!primaryPath || !nestedPath) return;
-
-    if (currentState.state === 'IDLE') {
-        primaryPath.classList.remove('visible');
-        nestedPath.classList.remove('visible');
-    } else if (currentState.levelStack.length > 0) {
-        primaryPath.classList.remove('visible');
-        nestedPath.classList.add('visible');
-    } else {
-        primaryPath.classList.add('visible');
-        nestedPath.classList.remove('visible');
-    }
-}
-
-function startParallaxLoop() {
-    const loop = () => {
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        
-        currentState.parallax.x += (currentState.mouseX - centerX - currentState.parallax.x) * 0.1;
-        currentState.parallax.y += (currentState.mouseY - centerY - currentState.parallax.y) * 0.1;
-        
-        const px = currentState.parallax.x / 50;
-        const py = currentState.parallax.y / 50;
-        
-        centerPiece.style.transform = `translate(${px}px, ${py}px)${currentState.state === 'IDLE' ? '' : ' scale(1)'}`;
-        
-        if (currentState.state === 'ACTIVE') {
-            const items = menuContainer.querySelectorAll('.menu-item');
-            items.forEach(item => {
-                const bx = parseFloat(item.dataset.baseX);
-                const by = parseFloat(item.dataset.baseY);
-                const itemX = centerX + bx;
-                const itemY = centerY + by;
-                const dist = Math.hypot(currentState.mouseX - itemX, currentState.mouseY - itemY);
-                
-                let scale = 1;
-                let offset = 0;
-                
-                if (dist < 120) {
-                    scale = 1 + (120 - dist) / 600;
-                    offset = (120 - dist) / 40;
-                }
-                
-                const angle = Math.atan2(currentState.mouseY - itemY, currentState.mouseX - itemX);
-                const dx = Math.cos(angle) * offset + px * 0.5;
-                const dy = Math.sin(angle) * offset + py * 0.5;
-                
-                item.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
-            });
-        }
-        
-        animationFrame = requestAnimationFrame(loop);
-    };
-    loop();
-}
-
 function updateDevOverlay() {
     if (currentState.config && currentState.config.devMode) {
         devOverlay.style.display = 'block';
-        devOverlay.innerHTML = `
-            DEPTH: ${currentState.levelStack.length} | 
-            ACTIONS: ${menuContainer.childElementCount} | 
-            THEME: ${currentState.config.activeTheme} | 
-            RADIUS: ${currentState.config.radius}px
-        `;
+        const depth = currentState.levelStack.length;
+        const count = menuContainer.childElementCount;
+        const theme = currentState.config.activeTheme;
+        const radius = currentState.config.radius;
+        devOverlay.textContent = `DEPTH:${depth} | ITEMS:${count} | THEME:${theme} | R:${radius}px`;
     } else {
         devOverlay.style.display = 'none';
     }
 }
 
-function openSettings() {
-    const settingsGroup = currentState.config.actions.find(a => a.label === 'Settings');
-    if (settingsGroup) {
-        if (currentState.state === 'IDLE') expandMenu();
-        setTimeout(() => {
-            currentState.levelStack = [settingsGroup.children];
-            renderOrbit();
-        }, 100);
-    }
-}
+// ============================================
+// HOVER LABEL
+// ============================================
 
-// UI Utilities
 function showHoverLabel(text) {
     if (!text) return;
     hoverLabel.textContent = text;
@@ -377,11 +417,15 @@ function hideHoverLabel() {
     hoverLabel.classList.remove('visible');
 }
 
+// ============================================
+// EFFECTS
+// ============================================
+
 function createRadialPulse() {
     const pulse = document.createElement('div');
     pulse.className = 'radial-ripple';
     rippleContainer.appendChild(pulse);
-    setTimeout(() => pulse.remove(), 250);
+    setTimeout(() => pulse.remove(), 300);
 }
 
 function createPulseRing() {
@@ -390,35 +434,72 @@ function createPulseRing() {
     ring.style.width = 'var(--center-size)';
     ring.style.height = 'var(--center-size)';
     centerPiece.appendChild(ring);
-    setTimeout(() => ring.remove(), 350);
+    setTimeout(() => ring.remove(), 400);
 }
 
 function playSound(type) {
-    if (!currentState.config.enableSoundEffects) return;
+    if (!currentState.config || !currentState.config.enableSoundEffects) return;
     const audio = document.getElementById(`sound-${type}`);
     if (audio) {
         audio.currentTime = 0;
-        audio.volume = 0.5;
+        audio.volume = 0.4;
         audio.play().catch(() => {});
     }
 }
 
-// Dev Modal Handlers
-function openModal() { document.getElementById('modal-overlay').style.display = 'flex'; }
-function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
-function submitAction() {
-    const label = document.getElementById('action-label').value;
-    const path = document.getElementById('action-path').value;
-    const icon = document.getElementById('action-icon').value;
-    if (!label || !path) return;
+// ============================================
+// PARALLAX LOOP
+// ============================================
 
-    window.orbitAPI.addAction({
-        type: 'custom',
-        label: label,
-        path: path,
-        icon: icon || 'terminal.svg'
-    });
-    closeModal();
+function startParallaxLoop() {
+    const loop = () => {
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+
+        currentState.parallax.x += (currentState.mouseX - cx - currentState.parallax.x) * 0.08;
+        currentState.parallax.y += (currentState.mouseY - cy - currentState.parallax.y) * 0.08;
+
+        const px = currentState.parallax.x / 50;
+        const py = currentState.parallax.y / 50;
+
+        // Center parallax
+        if (!currentState.isEditMode) {
+            centerPiece.style.transform = `translate(${px}px, ${py}px)`;
+        }
+
+        // Item proximity scaling
+        if (currentState.state === 'ACTIVE' && !currentState.isEditMode) {
+            const items = menuContainer.querySelectorAll('.menu-item');
+            items.forEach(item => {
+                const bx = parseFloat(item.dataset.baseX);
+                const by = parseFloat(item.dataset.baseY);
+                const ix = cx + bx;
+                const iy = cy + by;
+                const dist = Math.hypot(currentState.mouseX - ix, currentState.mouseY - iy);
+
+                let scale = 1;
+                let offset = 0;
+
+                if (dist < 110) {
+                    scale = 1 + (110 - dist) / 600;
+                    offset = (110 - dist) / 45;
+                }
+
+                const angle = Math.atan2(currentState.mouseY - iy, currentState.mouseX - ix);
+                const dx = Math.cos(angle) * offset + px * 0.4;
+                const dy = Math.sin(angle) * offset + py * 0.4;
+
+                item.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+            });
+        }
+
+        animationFrame = requestAnimationFrame(loop);
+    };
+    loop();
 }
+
+// ============================================
+// BOOT
+// ============================================
 
 init();
