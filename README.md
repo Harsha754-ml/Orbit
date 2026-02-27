@@ -2,6 +2,11 @@
 
 Radial Launcher for Windows 11 x64.
 
+
+<img width="513" height="485" alt="image" src="https://github.com/user-attachments/assets/960ee8a8-5f5c-4e32-b3c8-665616035513" />
+
+
+
 ## Features
 
 - **Radial Menu**: 8 customizable items.
