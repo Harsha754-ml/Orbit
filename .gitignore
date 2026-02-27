@@ -6,10 +6,8 @@ build/
 *.log
 
 # Project Files
-agents.md
-instructions.md
-skills.md
-assets/
+# (Cleaned up agents.md, instructions.md, skills.md)
+# assets/ (generic assets folder - keeping for now but note that .github/assets was force-added)
 
 # System
 .DS_Store
