@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Dark Neon",
+    "base": "rgba(15, 17, 21, 0.8)",
+    "accent": "#00bfff",
+    "glow": "rgba(0, 191, 255, 0.4)",
+    "blur": "20px",
+    "speed": 1.0
+  },
+  {
+    "name": "Minimal Frost",
+    "base": "rgba(255, 255, 255, 0.2)",
+    "accent": "#ffffff",
+    "glow": "rgba(255, 255, 255, 0.3)",
+    "blur": "40px",
+    "speed": 0.8
+  },
+  {
+    "name": "Cyber Blue",
+    "base": "rgba(10, 20, 40, 0.85)",
+    "accent": "#39ff14",
+    "glow": "rgba(57, 255, 20, 0.5)",
+    "blur": "15px",
+    "speed": 1.2
+  },
+  {
+    "name": "Mono Glass",
+    "base": "rgba(30, 30, 30, 0.6)",
+    "accent": "#aaaaaa",
+    "glow": "rgba(170, 170, 170, 0.2)",
+    "blur": "25px",
+    "speed": 1.0
+  }
+]

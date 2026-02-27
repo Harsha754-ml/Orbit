@@ -1,31 +1,50 @@
-# Orbit
+# Orbit Premium
 
-Radial Launcher for Windows 11 x64.
+A high-performance, aesthetically-driven radial launcher for Windows 11.
 
+```text
+    [ Trigger (AHK) ] <---- Hotkey in config.json
+           |
+    [ Main Process (Electron) ] <--- Config/Theme Watcher
+           |                     |
+    [ Preload (Bridge) ] <-------|--- Secure IPC
+           |
+    [ Renderer (Vanilla JS) ] <--- State Machine (IDLE -> EXPANDING -> ACTIVE)
+           |
+    [ CSS Variables (Themes) ]
+```
 
-<img width="513" height="485" alt="image" src="https://github.com/user-attachments/assets/960ee8a8-5f5c-4e32-b3c8-665616035513" />
+## Interaction Flow
 
-
+1. **Trigger**: Middle Mouse (default) launches or shows the hidden window.
+2. **Expand**: Center click ripples and expands primary items.
+3. **Navigate**: Click group items to drill down; Right-click to go back.
+4. **Execute**: Click command items to launch apps or system functions.
 
 ## Features
 
-- **Radial Menu**: 8 customizable items.
-- **Glassmorphism**: Modern Windows 11 aesthetic.
-- **Middle Click Toggle**: Trigger from anywhere via AutoHotkey.
-- **Single Instance**: Optimized performance and resource usage.
-- **Path Detection**: Automatic fallback for VS Code and Windows Terminal.
+- **Nested Groups**: Unlimited nesting (default limit 5).
+- **Theme System**: 4 bundled themes (Dark Neon, Minimal Frost, Cyber Blue, Mono Glass).
+- **Proximity Hover**: Items react before direct cursor interaction.
+- **Parallax**: Subtle motion based on cursor position.
+- **Auto-Detect**: Intelligent path resolution for VS Code and Terminal.
 
-## Architecture
+## Configuration
 
-- **Main Process**: Handles system calls, window life-cycle, and cursor positioning.
-- **Preload**: Secure IPC bridge using `contextBridge`.
-- **Renderer**: Vanilla JS/CSS for the radial UI and animations.
-- **Integration**: AHK v2 script for system-wide hotkey.
+Edit `config.json` to customize behavior:
 
-## Tech Stack
+- `hotkey`: Any valid AHK hotkey.
+- `radius`: Distance from center in pixels.
+- `animationSpeed`: Multiplier for transition durations.
+- `devMode`: Enables labels and runtime state overlay.
 
-- Electron
-- Node.js
-- AutoHotkey v2
-- HTML5/CSS3
-- Vanilla JS
+## Security & Performance
+
+- **Zero-Node Renderer**: Strictly enforced boundary via context bridge.
+- **Memory Stable**: DOM reuse strategy for deep nesting.
+- **Latency**: Window preloading ensures <100ms reveal time.
+
+## Troubleshooting
+
+- **No Trigger**: Ensure AutoHotkey v2 is installed and `orbit-trigger.ahk` is running.
+- **Config Crash**: Malformed JSON results in automatic fallback to safe defaults.

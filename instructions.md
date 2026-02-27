@@ -12,23 +12,19 @@ cd orbit
 npm install
 ```
 
-## 3. Development Mode
+## 3. Configuration & Themes
 
-```powershell
-npm start
-```
+- Edit `config.json` to customize your hotkey, radius, and action structure.
+- Edit `themes.json` to define custom UI aesthetics.
+- Themes and Config reload automatically on save.
 
-Launch `orbit-trigger.ahk` to enable the middle-click toggle.
+## 4. Development & Production
 
-## 4. Building Executable
-
-```powershell
-npm run build
-```
-
-The application will be built into the `dist` folder.
+- **Dev Mode**: Set `"devMode": true` in `config.json` for live overlays and labels.
+- **Run**: `npm start`
+- **Build**: `npm run build`
 
 ## 5. Deployment
 
-- Run the generated `.exe` from `dist`.
-- Keep `orbit-trigger.ahk` running in the background for global access.
+- Launch `orbit-trigger.ahk` (it reads the hotkey from your config).
+- The app must be running or in the proper path for the trigger to work.

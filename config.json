@@ -1,0 +1,67 @@
+{
+  "hotkey": "MButton",
+  "radius": 140,
+  "activeTheme": "Dark Neon",
+  "animationSpeed": 1.0,
+  "enableSoundEffects": true,
+  "gestureNavigationEnabled": true,
+  "devMode": false,
+  "nestingDepthLimit": 5,
+  "actions": [
+    {
+      "type": "command",
+      "label": "VS Code",
+      "icon": "vscode.svg",
+      "command": "auto-detect"
+    },
+    {
+      "type": "command",
+      "label": "Terminal",
+      "icon": "terminal.svg",
+      "command": "auto-detect"
+    },
+    {
+      "type": "group",
+      "label": "Power",
+      "icon": "shutdown.svg",
+      "children": [
+        {
+          "type": "command",
+          "label": "Shutdown",
+          "icon": "shutdown.svg",
+          "command": "shutdown /s /t 10"
+        },
+        {
+          "type": "command",
+          "label": "Restart",
+          "icon": "restart.svg",
+          "command": "shutdown /r /t 10"
+        },
+        {
+          "type": "command",
+          "label": "Lock",
+          "icon": "lock.svg",
+          "command": "rundll32.exe user32.dll,LockWorkStation"
+        }
+      ]
+    },
+    {
+      "type": "command",
+      "label": "Task Manager",
+      "icon": "taskmanager.svg",
+      "command": "taskmgr.exe"
+    },
+    {
+      "type": "command",
+      "label": "Downloads",
+      "icon": "downloads.svg",
+      "command": "explorer.exe shell:Downloads"
+    },
+    {
+      "type": "command",
+      "label": "Snipping Tool",
+      "icon": "screenshot.svg",
+      "command": "explorer.exe ms-screenclip:"
+    }
+  ]
+}

@@ -1,7 +1,6 @@
-# Skills Used
-
-- **Electron App Architecture**: Main, Preload, and Renderer separation.
-- **Windows System Engineering**: `child_process` execution, file system path detection, and power commands.
-- **UI/UX Design**: Radial mathematics, CSS glassmorphism, and hardware-accelerated animations.
-- **AutoHotkey v2 Scripting**: Hotkey management and process control.
-- **DPI/Multi-monitor Handling**: Dynamic coordinate calculation for consistent layout across displays.
+- **Electron App Architecture**: Main, Preload, and Renderer separation with secure IPC.
+- **State Machine UI**: Complex state-based transitions (IDLE/ACTIVE/COLLAPSING).
+- **Design Systems**: Dynamic theme engine using CSS variables and JSON definitions.
+- **Advanced UX**: Proximity-based scaling, parallax effects, and staggered animations.
+- **Robust Engineering**: File system watchers with debouncing and graceful config fallbacks.
+- **Windows Integration**: Multi-monitor DPI handling and AutoHotkey v2 process control.

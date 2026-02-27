@@ -1,21 +1,17 @@
 # Orbit Agent Roles
 
-## UI Agent
+## UI Agent (Interaction Designer)
 
-- **Responsibility**: Radial UI layout, glassmorphism styling, and staggered animations.
-- **Constraints**: 140px radius, #0f1115 base, backdrop blur, no text labels.
+- **Responsibility**: Advanced animation states, staggered entry, parallax effects, and hover proximity logic.
 
-## System Agent
+## System Agent (Robustness Lead)
 
-- **Responsibility**: Child process execution, path detection for VS Code/Terminal, and power commands.
-- **Constraints**: Absolute path fallbacks, secure IPC handling, try-catch wrappers.
+- **Responsibility**: Config validation, file watchers, sound bridge, and secure process execution.
 
-## Build Agent
+## Theme Architect
 
-- **Responsibility**: `package.json` configuration, `electron-builder` settings, and directory structure.
-- **Constraints**: Windows 11 x64 target (NSIS), single instance enforcement.
+- **Responsibility**: CSS variable-driven styling, themes.json management, and smooth theme transitions.
 
-## Security Agent
+## Security & Build Agent
 
-- **Responsibility**: IPC bridge security, context isolation, and node integration management.
-- **Constraints**: `contextBridge` usage, no direct Node access in renderer.
+- **Responsibility**: Single instance locking, IPC protection, and NSIS deployment.

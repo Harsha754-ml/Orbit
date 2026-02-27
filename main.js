@@ -1,30 +1,66 @@
-const { app, BrowserWindow, ipcMain, screen, shell } = require("electron");
-const path = require("path");
-const { exec } = require("child_process");
-const fs = require("fs");
+const { app, BrowserWindow, ipcMain, screen, shell } = require('electron');
+const path = require('path');
+const { exec } = require('child_process');
+const fs = require('fs');
 
 let mainWindow;
-const isDev = process.env.NODE_ENV === "development";
+let config;
+let themes;
+
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+const THEMES_PATH = path.join(__dirname, 'themes.json');
 
 // Single Instance Lock
 const gotTheLock = app.requestSingleInstanceLock();
-
 if (!gotTheLock) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
-    if (mainWindow) {
-      showWindow();
-    }
+  app.on('second-instance', () => {
+    if (mainWindow) showWindow();
   });
+  app.whenReady().then(() => {
+    loadConfig();
+    loadThemes();
+    createWindow();
+    watchFiles();
+  });
+}
 
-  app.whenReady().then(createWindow);
+function loadConfig() {
+  try {
+    const data = fs.readFileSync(CONFIG_PATH, 'utf8');
+    config = JSON.parse(data);
+  } catch (err) {
+    console.error('Failed to load config, using defaults', err);
+    config = { radius: 140, activeTheme: 'Dark Neon', actions: [] };
+  }
+}
+
+function loadThemes() {
+  try {
+    const data = fs.readFileSync(THEMES_PATH, 'utf8');
+    themes = JSON.parse(data);
+  } catch (err) {
+    console.error('Failed to load themes', err);
+    themes = [];
+  }
+}
+
+function watchFiles() {
+  fs.watchFile(CONFIG_PATH, () => {
+    loadConfig();
+    if (mainWindow) mainWindow.webContents.send('config-updated', config);
+  });
+  fs.watchFile(THEMES_PATH, () => {
+    loadThemes();
+    if (mainWindow) mainWindow.webContents.send('themes-updated', themes);
+  });
 }
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 600,
-    height: 600,
+    width: 800,
+    height: 800,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -32,119 +68,83 @@ function createWindow() {
     show: false,
     resizable: false,
     movable: false,
-    backgroundColor: "#00000000",
+    backgroundColor: '#00000000',
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false,
-    },
+      nodeIntegration: false
+    }
   });
 
-  mainWindow.loadFile(path.join(__dirname, "src", "index.html"));
-
-  mainWindow.on("blur", () => {
-    mainWindow.hide();
+  mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+  mainWindow.on('blur', () => {
+    if (!config.devMode) mainWindow.hide();
   });
 
-  // Handle IPC calls securely
   setupIpcHandlers();
 }
 
 function showWindow() {
   if (!mainWindow) return;
-
   const cursorPoint = screen.getCursorScreenPoint();
   const winBounds = mainWindow.getBounds();
-
-  // Center window on cursor position
   mainWindow.setPosition(
     Math.round(cursorPoint.x - winBounds.width / 2),
-    Math.round(cursorPoint.y - winBounds.height / 2),
+    Math.round(cursorPoint.y - winBounds.height / 2)
   );
-
   mainWindow.show();
   mainWindow.focus();
+  mainWindow.webContents.send('window-shown');
 }
 
 function setupIpcHandlers() {
-  ipcMain.on("show-app", () => showWindow());
-  ipcMain.on("hide-app", () => mainWindow.hide());
-
-  ipcMain.on("execute-action", (event, action) => {
-    try {
-      handleAction(action);
-    } catch (err) {
-      console.error(`Action failed: ${action}`, err);
-    }
-    mainWindow.hide();
+  ipcMain.handle('get-config', () => config);
+  ipcMain.handle('get-themes', () => themes);
+  ipcMain.on('hide-app', () => mainWindow.hide());
+  ipcMain.on('execute-action', (event, action) => {
+    handleAction(action);
+    if (!config.devMode) mainWindow.hide();
+  });
+  ipcMain.on('play-sound', (event, soundType) => {
+    // Standard UI sounds can be played via various methods; here we just log for devMode
+    if (config.devMode) console.log(`Playing sound: ${soundType}`);
   });
 }
 
 function handleAction(action) {
-  switch (action) {
-    case "vscode":
-      launchVSCode();
-      break;
-    case "terminal":
-      launchTerminal();
-      break;
-    case "taskmgr":
-      exec("taskmgr.exe");
-      break;
-    case "downloads":
-      exec("explorer.exe shell:Downloads");
-      break;
-    case "screenshot":
-      exec("explorer.exe ms-screenclip:");
-      break;
-    case "shutdown":
-      exec(isDev ? "shutdown /s /t 10" : "shutdown /s /t 0");
-      break;
-    case "restart":
-      exec(isDev ? "shutdown /r /t 10" : "shutdown /r /t 0");
-      break;
-    case "lock":
-      exec("rundll32.exe user32.dll,LockWorkStation");
-      break;
+  const cmd = action.command;
+  if (!cmd) return;
+
+  if (cmd === 'auto-detect') {
+    if (action.label === 'VS Code') launchVSCode();
+    else if (action.label === 'Terminal') launchTerminal();
+    return;
   }
+
+  exec(cmd, (err) => {
+    if (err) console.error(`Action failed: ${cmd}`, err);
+  });
 }
 
 function launchVSCode() {
-  const userPath = path.join(
-    process.env.LOCALAPPDATA,
-    "Programs",
-    "Microsoft VS Code",
-    "Code.exe",
-  );
-  const systemPath = "C:\\Program Files\\Microsoft VS Code\\Code.exe";
-
-  if (fs.existsSync(userPath)) {
-    exec(`"${userPath}"`);
-  } else if (fs.existsSync(systemPath)) {
-    exec(`"${systemPath}"`);
-  } else {
-    exec("code", (err) => {
-      if (err) console.error("VS Code not found in PATH");
-    });
-  }
+  const userPath = path.join(process.env.LOCALAPPDATA, 'Programs', 'Microsoft VS Code', 'Code.exe');
+  const systemPath = 'C:\\Program Files\\Microsoft VS Code\\Code.exe';
+  if (fs.existsSync(userPath)) exec(`"${userPath}"`);
+  else if (fs.existsSync(systemPath)) exec(`"${systemPath}"`);
+  else exec('where code', (err, stdout) => {
+    if (!err) exec(`"${stdout.trim()}"`);
+    else console.error('VS Code not found');
+  });
 }
 
 function launchTerminal() {
-  const localPath = path.join(
-    process.env.LOCALAPPDATA,
-    "Microsoft",
-    "WindowsApps",
-    "wt.exe",
-  );
-  if (fs.existsSync(localPath)) {
-    exec(`"${localPath}"`);
-  } else {
-    exec('start "" "wt.exe"', (err) => {
-      if (err) console.error("Windows Terminal not found");
-    });
-  }
+  const localPath = path.join(process.env.LOCALAPPDATA, 'Microsoft', 'WindowsApps', 'wt.exe');
+  if (fs.existsSync(localPath)) exec(`"${localPath}"`);
+  else exec('start "" "wt.exe"', (err) => {
+    if (err) console.error('Windows Terminal not found');
+  });
 }
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
 });
