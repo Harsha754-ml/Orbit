@@ -1,11 +1,13 @@
 {
   "hotkey": "MButton",
-  "radius": 140,
+  "radius": 90,
+  "primaryRadius": 90,
+  "groupRadius": 75,
   "activeTheme": "Dark Neon",
   "animationSpeed": 1.0,
   "enableSoundEffects": true,
   "gestureNavigationEnabled": true,
-  "devMode": false,
+  "devMode": true,
   "nestingDepthLimit": 5,
   "actions": [
     {

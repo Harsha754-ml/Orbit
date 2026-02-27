@@ -1,11 +1,13 @@
 :root {
-    --bg-base: rgba(15, 17, 21, 0.8);
+    --bg-base: rgba(15, 17, 21, 0.85);
     --accent: #00bfff;
-    --glow: rgba(0, 191, 255, 0.4);
-    --blur: 20px;
+    --glow-idle: rgba(0, 191, 255, 0.2);
+    --glow-hover: rgba(0, 191, 255, 0.6);
+    --glow-peak: rgba(0, 191, 255, 0.9);
+    --blur: 25px;
     --anim-speed: 1.0;
-    --item-size: 60px;
-    --center-size: 80px;
+    --item-size: 56px;
+    --center-size: 84px;
     --easing: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -24,8 +26,29 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    transition: background 0.15s ease;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    perspective: 1000px;
+}
+
+/* Vignette and Depth Backdrop */
+body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.4) 100%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Noise Texture Overlay */
+body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3Base-filter id='noiseFilter'%3Base-furbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3Base-colorMatrix type='saturate' values='0'/%3Base-componentTransfer%3Base-funcR type='linear' slope='0.1'/%3Base-funcG type='linear' slope='0.1'/%3Base-funcB type='linear' slope='0.1'/%3Base-funcA type='linear' slope='1'/%3Base-componentTransfer%3Base-filter%3Base-rect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3Base-svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 1000;
 }
 
 .orbit-container {
@@ -37,29 +60,67 @@ body {
     align-items: center;
 }
 
+/* Center Piece States */
 .center-piece {
     width: var(--center-size);
     height: var(--center-size);
     background: var(--bg-base);
     backdrop-filter: blur(var(--blur));
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    z-index: 100;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.05);
-    transition: transform 0.2s var(--easing), box-shadow 0.2s var(--easing), background 0.15s ease;
+    z-index: 200;
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.05);
+    transition: all 0.25s var(--easing);
     cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
+.center-piece::after {
+    content: '';
+    position: absolute;
+    width: 40%;
+    height: 40%;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    opacity: 0.3;
+    transition: all 0.3s var(--easing);
+}
+
+/* IDLE */
+.center-piece.idle {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px var(--glow-idle);
+}
+
+/* HOVER */
 .center-piece:hover {
     transform: scale(1.05);
-    box-shadow: 0 0 20px var(--glow);
+    border-color: rgba(0, 191, 255, 0.6);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px var(--glow-hover);
+}
+
+.center-piece:hover::after {
+    opacity: 0.8;
+}
+
+/* EXPANDED - Pulsing ring handled in JS via temporary animation */
+.center-piece.expanded {
     border-color: var(--accent);
 }
 
-.center-piece:active {
-    transform: scale(0.95);
+/* CHILD VIEW - Back indicator effect */
+.center-piece.child-view::after {
+    width: 30%;
+    height: 30%;
+    border-left: 2px solid var(--accent);
+    border-top: 2px solid var(--accent);
+    transform: rotate(-45deg) translate(2px, 2px);
+    border-radius: 0;
+    opacity: 0.9;
 }
 
+/* Radial Menu & Items */
 .radial-menu {
     position: absolute;
     width: 100%;
@@ -84,14 +145,15 @@ body {
     cursor: pointer;
     pointer-events: auto;
     transition: 
-        transform 0.2s var(--easing), 
-        box-shadow 0.2s var(--easing), 
-        background 0.15s ease,
-        opacity 0.2s var(--easing),
-        filter 0.2s var(--easing);
+        transform 0.25s var(--easing), 
+        box-shadow 0.25s var(--easing), 
+        background 0.2s var(--easing),
+        opacity 0.25s var(--easing),
+        filter 0.25s var(--easing);
     opacity: 0;
     transform: scale(0.5);
-    z-index: 10;
+    z-index: 150;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .menu-item.visible {
@@ -99,69 +161,82 @@ body {
     transform: scale(1);
 }
 
+/* Parent Morph */
+.menu-item.parent-morph {
+    opacity: 0.4;
+    transform: scale(0.8);
+    pointer-events: none;
+}
+
 .menu-item.collapsing {
     opacity: 0;
-    transform: scale(0.5) rotate(-45deg);
+    transform: scale(0.2) translateY(20px);
 }
 
 .menu-item:hover {
-    transform: scale(1.1) translateY(-5px);
-    background: var(--bg-base);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3), 0 0 25px var(--glow);
+    transform: scale(1.15) !important;
+    z-index: 160;
+    background: rgba(20, 25, 30, 0.9);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 25px var(--glow-hover);
     border-color: var(--accent);
 }
 
 .menu-item:active {
-    transform: scale(0.95);
+    transform: scale(0.95) !important;
+    box-shadow: 0 0 40px var(--glow-peak);
 }
 
 .menu-item img {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     pointer-events: none;
-    filter: drop-shadow(0 0 5px var(--glow));
+    transition: transform 0.2s var(--easing);
 }
 
-.ripple {
+.menu-item:hover img {
+    transform: scale(1.1);
+}
+
+/* Animations */
+.pulse-ring {
     position: absolute;
-    border-radius: 50%;
     border: 2px solid var(--accent);
-    transform: scale(0);
-    opacity: 0.5;
+    border-radius: 50%;
     pointer-events: none;
-    animation: ripple-anim 0.6s var(--easing);
+    animation: pulse-out 0.35s var(--easing) forwards;
 }
 
-@keyframes ripple-anim {
-    to {
-        transform: scale(4);
-        opacity: 0;
-    }
+@keyframes pulse-out {
+    from { transform: scale(1); opacity: 0.8; }
+    to { transform: scale(1.4); opacity: 0; }
+}
+
+.radial-ripple {
+    position: absolute;
+    width: var(--center-size);
+    height: var(--center-size);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: radial-ripple-out 0.25s var(--easing) forwards;
+}
+
+@keyframes radial-ripple-out {
+    from { transform: scale(1); opacity: 0.5; }
+    to { transform: scale(2.5); opacity: 0; }
 }
 
 .dev-overlay {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border-radius: 8px;
+    border-left: 3px solid var(--accent);
     color: var(--accent);
-    font-size: 12px;
+    font-size: 11px;
+    font-family: monospace;
     pointer-events: none;
     z-index: 1000;
-}
-
-.item-label {
-    position: absolute;
-    top: calc(100% + 5px);
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.menu-item:hover .item-label {
-    opacity: 1;
 }
