@@ -1,13 +1,21 @@
 {
   "hotkey": "MButton",
-  "radius": 90,
-  "primaryRadius": 90,
+  "radius": 100,
+  "primaryRadius": 100,
   "groupRadius": 75,
   "activeTheme": "Dark Neon",
   "animationSpeed": 1.0,
   "enableSoundEffects": true,
   "gestureNavigationEnabled": true,
-  "devMode": true,
+  "devMode": false,
+  "showHoverLabels": true,
+  "requireCtrlInBrowsers": true,
+  "restrictToDesktop": true,
+  "browserList": [
+    "chrome.exe",
+    "msedge.exe",
+    "firefox.exe"
+  ],
   "nestingDepthLimit": 5,
   "actions": [
     {
@@ -54,16 +62,28 @@
       "command": "taskmgr.exe"
     },
     {
-      "type": "command",
-      "label": "Downloads",
-      "icon": "downloads.svg",
-      "command": "explorer.exe shell:Downloads"
+      "type": "group",
+      "label": "Custom",
+      "icon": "terminal.svg",
+      "children": [
+        {
+          "type": "command",
+          "label": "Add New",
+          "icon": "terminal.svg",
+          "command": "ui:open-add-action"
+        }
+      ]
     },
     {
-      "type": "command",
-      "label": "Snipping Tool",
-      "icon": "screenshot.svg",
-      "command": "explorer.exe ms-screenclip:"
+      "type": "group",
+      "label": "Themes",
+      "icon": "downloads.svg",
+      "children": [
+        { "type": "command", "label": "Dark Neon", "icon": "terminal.svg", "command": "theme:Dark Neon" },
+        { "type": "command", "label": "Minimal Frost", "icon": "terminal.svg", "command": "theme:Minimal Frost" },
+        { "type": "command", "label": "Cyber Blue", "icon": "terminal.svg", "command": "theme:Cyber Blue" },
+        { "type": "command", "label": "Mono Glass", "icon": "terminal.svg", "command": "theme:Mono Glass" }
+      ]
     }
   ]
 }

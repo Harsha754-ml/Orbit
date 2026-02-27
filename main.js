@@ -105,25 +105,63 @@ function setupIpcHandlers() {
     handleAction(action);
     if (!config.devMode) mainWindow.hide();
   });
-  ipcMain.on('play-sound', (event, soundType) => {
-    // Standard UI sounds can be played via various methods; here we just log for devMode
-    if (config.devMode) console.log(`Playing sound: ${soundType}`);
+  ipcMain.on('update-radius', (event, radius) => {
+    updateConfig({ radius: radius, primaryRadius: radius });
+  });
+
+  ipcMain.on('add-action', (event, newAction) => {
+    const actions = [...config.actions, newAction];
+    updateConfig({ actions: actions });
   });
 }
 
 function handleAction(action) {
   const cmd = action.command;
-  if (!cmd) return;
-
+  const type = action.type;
+  
   if (cmd === 'auto-detect') {
     if (action.label === 'VS Code') launchVSCode();
     else if (action.label === 'Terminal') launchTerminal();
     return;
   }
 
-  exec(cmd, (err) => {
-    if (err) console.error(`Action failed: ${cmd}`, err);
-  });
+  if (cmd && cmd.startsWith('theme:')) {
+    const themeName = cmd.replace('theme:', '');
+    updateConfig({ activeTheme: themeName });
+    return;
+  }
+
+  // Custom Action Logic
+  if (type === 'custom') {
+    const pathValue = action.path;
+    if (!pathValue) return;
+
+    if (pathValue.startsWith('http')) {
+      shell.openExternal(pathValue);
+    } else if (fs.existsSync(pathValue)) {
+      const stats = fs.statSync(pathValue);
+      if (stats.isDirectory()) {
+        shell.openPath(pathValue);
+      } else {
+        exec(`"${pathValue}" ${action.args || ''}`);
+      }
+    } else {
+      if (config.devMode) console.error(`Path not found: ${pathValue}`);
+    }
+    return;
+  }
+
+  if (cmd) {
+    exec(cmd, (err) => {
+      if (err) console.error(`Action failed: ${cmd}`, err);
+    });
+  }
+}
+
+function updateConfig(newValues) {
+  config = { ...config, ...newValues };
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  if (mainWindow) mainWindow.webContents.send('config-updated', config);
 }
 
 function launchVSCode() {

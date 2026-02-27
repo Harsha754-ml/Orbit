@@ -12,6 +12,7 @@ const menuContainer = document.getElementById('radial-menu');
 const centerPiece = document.getElementById('center-piece');
 const rippleContainer = document.getElementById('ripple-container');
 const devOverlay = document.getElementById('dev-overlay');
+const hoverLabel = document.getElementById('hover-label');
 
 async function init() {
     config = await window.orbitAPI.getConfig();
@@ -40,7 +41,16 @@ async function init() {
     });
 
     centerPiece.addEventListener('click', toggleMenu);
+    centerPiece.addEventListener('contextmenu', (e) => {
+        if (config.devMode) {
+            e.preventDefault();
+            e.stopPropagation();
+            openModal();
+        }
+    });
+
     document.body.addEventListener('contextmenu', (e) => {
+        if (e.target.closest('.center-piece')) return;
         e.preventDefault();
         goBack();
     });
@@ -50,8 +60,57 @@ async function init() {
         mouseY = e.clientY;
     });
 
+    document.addEventListener('wheel', (e) => {
+        if (state !== 'IDLE' && e.ctrlKey) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -10 : 10;
+            config.radius = Math.max(50, Math.min(300, (config.radius || 100) + delta));
+            config.primaryRadius = config.radius;
+            renderGroup(currentGroup, config.radius, true);
+            window.orbitAPI.updateRadius(config.radius);
+        }
+    }, { passive: false });
+
     startParallaxLoop();
     updateDevOverlay();
+}
+
+// Dev Modal Handlers
+function openModal() {
+    document.getElementById('modal-overlay').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').style.display = 'none';
+}
+
+function showHoverLabel(text) {
+    if (!text) return;
+    hoverLabel.textContent = text;
+    hoverLabel.classList.add('visible');
+}
+
+function hideHoverLabel() {
+    hoverLabel.classList.remove('visible');
+}
+
+function submitAction() {
+    const label = document.getElementById('action-label').value;
+    const path = document.getElementById('action-path').value;
+    const icon = document.getElementById('action-icon').value;
+
+    if (!label || !path) return;
+
+    const newAction = {
+        type: 'custom',
+        label: label,
+        path: path,
+        icon: icon || 'terminal.svg'
+    };
+
+    window.orbitAPI.addAction(newAction);
+    closeModal();
+    resetToRoot();
 }
 
 function applyTheme(themeName) {
@@ -61,8 +120,9 @@ function applyTheme(themeName) {
     const root = document.documentElement;
     root.style.setProperty('--bg-base', theme.base);
     root.style.setProperty('--accent', theme.accent);
-    root.style.setProperty('--glow-idle', `rgba(${hexToRgb(theme.accent)}, 0.2)`);
-    root.style.setProperty('--glow-hover', `rgba(${hexToRgb(theme.accent)}, 0.6)`);
+    root.style.setProperty('--glow-idle', `rgba(${hexToRgb(theme.accent)}, 0.15)`);
+    root.style.setProperty('--glow-primary', `rgba(${hexToRgb(theme.accent)}, 0.5)`);
+    root.style.setProperty('--glow-nested', `rgba(${hexToRgb(theme.accent)}, 0.25)`);
     root.style.setProperty('--glow-peak', `rgba(${hexToRgb(theme.accent)}, 0.9)`);
     root.style.setProperty('--blur', theme.blur);
     root.style.setProperty('--anim-speed', theme.speed);
@@ -92,9 +152,29 @@ function toggleMenu() {
     }
 }
 
+function updateOrbitalPaths() {
+    const primaryPath = document.getElementById('orbital-path-primary');
+    const nestedPath = document.getElementById('orbital-path-nested');
+    
+    document.documentElement.style.setProperty('--primary-radius', `${config.primaryRadius}px`);
+    document.documentElement.style.setProperty('--group-radius', `${config.groupRadius}px`);
+
+    if (state === 'IDLE') {
+        primaryPath.classList.remove('visible');
+        nestedPath.classList.remove('visible');
+    } else if (history.length > 0) {
+        primaryPath.classList.remove('visible');
+        nestedPath.classList.add('visible');
+    } else {
+        primaryPath.classList.add('visible');
+        nestedPath.classList.remove('visible');
+    }
+}
+
 function expandMenu() {
     createRadialPulse();
     createPulseRing();
+    updateOrbitalPaths(); // Show tracks
     renderGroup(config.actions, config.primaryRadius);
     playSound('expand');
     updateCenterState();
@@ -102,19 +182,22 @@ function expandMenu() {
 
 function renderGroup(actions, radius, isMorphing = false) {
     state = isMorphing ? state : 'EXPANDING';
-    
-    // Clear item-level parallax and scale before re-rendering
     menuContainer.innerHTML = '';
     currentGroup = actions;
     
     const count = actions.length;
+    // Hierarchical glow and size refinement
+    const isNested = history.length > 0;
     
     actions.forEach((action, index) => {
         const item = document.createElement('div');
-        item.className = 'menu-item';
+        item.className = `menu-item ${isNested ? 'nested-item' : ''}`;
         
         const icon = document.createElement('img');
-        icon.src = `assets/${action.icon || 'default.svg'}`;
+        // Icon Fallback Logic
+        const iconPath = `assets/${action.icon || 'default.svg'}`;
+        icon.src = iconPath;
+        icon.onerror = () => { icon.src = 'assets/terminal.svg'; }; // Fallback to terminal icon
         item.appendChild(icon);
         
         if (config.devMode) {
@@ -124,7 +207,10 @@ function renderGroup(actions, radius, isMorphing = false) {
             item.appendChild(label);
         }
         
-        const angle = (index / count) * 2 * Math.PI - Math.PI / 2;
+        // Angular offset (-15°) for non-static distribution
+        const angularOffset = -15 * (Math.PI / 180);
+        const angle = (index / count) * 2 * Math.PI - Math.PI / 2 + angularOffset;
+        
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
         
@@ -133,20 +219,43 @@ function renderGroup(actions, radius, isMorphing = false) {
         item.style.left = `calc(50% + ${x}px - var(--item-size)/2)`;
         item.style.top = `calc(50% + ${y}px - var(--item-size)/2)`;
         
-        item.onclick = () => handleItemClick(action);
+        // Spatial Compression (Overshoot)
+        item.style.transform = 'scale(0.95)';
+        
+        if (config.showHoverLabels) {
+            item.onmouseenter = () => showHoverLabel(action.label);
+            item.onmouseleave = () => hideHoverLabel();
+        }
+        
+        item.onclick = (e) => {
+            e.stopPropagation();
+            handleItemClick(action, item);
+        };
         
         menuContainer.appendChild(item);
         
-        // Staggered entry
+        // Staggered entry with overshoot snapping
         setTimeout(() => {
             item.classList.add('visible');
+            item.style.transform = 'scale(1)'; // Snap to target
             if (index === count - 1) state = 'ACTIVE';
-        }, index * 12 * (config.animationSpeed || 1.0));
+        }, index * 10 * (config.animationSpeed || 1.0));
     });
 }
 
-function handleItemClick(action) {
+function handleItemClick(action, element) {
+    if (action.command === 'ui:open-add-action') {
+        openModal();
+        return;
+    }
+
     if (action.type === 'group') {
+        if (!action.children || action.children.length === 0) {
+            // Empty Group Protection: Shake Animation
+            element.classList.add('shake');
+            setTimeout(() => element.classList.remove('shake'), 400);
+            return;
+        }
         history.push(currentGroup);
         if (history.length > (config.nestingDepthLimit || 5)) return;
         morphToGroup(action.children);
@@ -160,14 +269,26 @@ function morphToGroup(children) {
     state = 'COLLAPSING';
     const items = menuContainer.querySelectorAll('.menu-item');
     
-    // Apple-style morph: current items shrink and fade
+    // Apple-style morph: current items collapse inward slightly and fade
     items.forEach(item => {
+        const bx = parseFloat(item.dataset.baseX);
+        const by = parseFloat(item.dataset.baseY);
+        const angle = Math.atan2(by, bx);
+        
+        // Collapse inward by 10px
+        const cx = Math.cos(angle) * -10;
+        const cy = Math.sin(angle) * -10;
+        
+        item.style.setProperty('--collapse-x', `${cx}px`);
+        item.style.setProperty('--collapse-y', `${cy}px`);
+        
         item.classList.remove('visible');
         item.classList.add('parent-morph');
     });
     
     setTimeout(() => {
         renderGroup(children, config.groupRadius, true);
+        updateOrbitalPaths(); // Switch tracks
         updateCenterState();
     }, 150 * (config.animationSpeed || 1.0));
 }
@@ -194,6 +315,8 @@ function closeMenu() {
         menuContainer.innerHTML = '';
         state = 'IDLE';
         history = [];
+        hideHoverLabel();
+        updateOrbitalPaths(); // Hide tracks
         updateCenterState();
     }, 200 * (config.animationSpeed || 1.0));
     playSound('collapse');
@@ -271,8 +394,15 @@ function startParallaxLoop() {
 }
 
 function playSound(type) {
-    if (config.enableSoundEffects) {
-        window.orbitAPI.playSound(type);
+    if (!config.enableSoundEffects) return;
+    
+    const audio = document.getElementById(`sound-${type}`);
+    if (audio) {
+        audio.currentTime = 0;
+        audio.volume = 0.5;
+        audio.play().catch(e => {
+            if (config.devMode) console.warn('Audio playback failed (probably missing asset or user interaction required):', e);
+        });
     }
 }
 
