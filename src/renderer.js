@@ -3,6 +3,26 @@
 // Transparent window. Radial-only interaction.
 // ============================================
 
+/**
+ * Integrated Layout Engine Logics (from lib/layoutEngine.js)
+ */
+function computeLayout(itemCount, baseRadius) {
+    const radius = itemCount <= 8 ? baseRadius : baseRadius + (itemCount - 8) * 8;
+    const positions = [];
+    const angleStep = (2 * Math.PI) / itemCount;
+    const rotationOffset = -Math.PI / 2;
+
+    for (let i = 0; i < itemCount; i++) {
+        const angle = rotationOffset + (i * angleStep);
+        positions.push({
+            x: Math.cos(angle) * radius,
+            y: Math.sin(angle) * radius,
+            angle: angle
+        });
+    }
+    return positions;
+}
+
 // STATE
 let currentState = {
     config: null,
@@ -355,14 +375,20 @@ function renderOrbit() {
         item.appendChild(iconEl);
 
         // Position around radial center
-        const angle = (index / count) * 2 * Math.PI - Math.PI / 2 + (-15 * Math.PI / 180);
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+        const positions = computeLayout(currentActions.length, radius);
+        const pos = positions[index];
 
-        item.dataset.baseX = x;
-        item.dataset.baseY = y;
-        item.style.left = `${cx + x - 23}px`; // 23 = item-size/2
-        item.style.top = `${cy + y - 23}px`;
+        item.dataset.baseX = pos.x;
+        item.dataset.baseY = pos.y;
+        
+        // Use CSS Variables for GPU-accelerated positioning
+        item.style.setProperty('--x', `${pos.x}px`);
+        item.style.setProperty('--y', `${pos.y}px`);
+        
+        item.style.left = '50%'; // Align to container center
+        item.style.top = '50%';
+        item.style.marginLeft = '-24px'; // Half of item-size
+        item.style.marginTop = '-24px';
 
         item.onmouseenter = () => {
             if (currentState.config.showHoverLabels) showHoverLabel(action.label);
@@ -480,7 +506,7 @@ function expandMenu() {
     const menuContainer = document.getElementById('radial-menu');
     menuContainer.innerHTML = '';
     
-    // Position menu
+    // Position menu container at trigger point
     menuContainer.style.left = `${currentState.radialCenter.x}px`;
     menuContainer.style.top = `${currentState.radialCenter.y}px`;
     menuContainer.classList.add('active');
@@ -500,20 +526,20 @@ function expandMenu() {
         const iconEl = createIcon(action);
         item.appendChild(iconEl);
 
-        // Position around radial center (re-using logic from renderOrbit)
-        const count = actions.length;
-        const isNested = currentState.levelStack.length > 0;
-        const radius = isNested
-            ? (currentState.config.groupRadius || 75)
-            : (currentState.config.radius || 100);
-        const angle = (index / count) * 2 * Math.PI - Math.PI / 2 + (-15 * Math.PI / 180);
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+        // Position around radial center
+        const positions = computeLayout(actions.length, radius);
+        const pos = positions[index];
 
-        item.dataset.baseX = x;
-        item.dataset.baseY = y;
-        item.style.left = `${currentState.radialCenter.x + x - 23}px`; // 23 = item-size/2
-        item.style.top = `${currentState.radialCenter.y + y - 23}px`;
+        item.dataset.baseX = pos.x;
+        item.dataset.baseY = pos.y;
+        
+        item.style.setProperty('--x', `${pos.x}px`);
+        item.style.setProperty('--y', `${pos.y}px`);
+        
+        item.style.left = '50%';
+        item.style.top = '50%';
+        item.style.marginLeft = '-24px';
+        item.style.marginTop = '-24px';
 
         item.onmouseenter = () => {
             if (currentState.config.showHoverLabels) showHoverLabel(action.label);
@@ -784,7 +810,9 @@ function startParallaxLoop() {
                 const dx = Math.cos(angle) * offset + px * 0.3;
                 const dy = Math.sin(angle) * offset + py * 0.3;
 
-                item.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+                item.style.setProperty('--dx', `${dx}px`);
+                item.style.setProperty('--dy', `${dy}px`);
+                item.style.setProperty('--scale', scale);
             });
         }
 

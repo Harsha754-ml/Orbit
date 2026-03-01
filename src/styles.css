@@ -187,7 +187,12 @@ body {
     cursor: pointer;
     pointer-events: auto;
     opacity: 0;
-    transform: translate3d(0, 0, 0) scale(0.3);
+    --x: 0px;
+    --y: 0px;
+    --dx: 0px;
+    --dy: 0px;
+    --scale: 1;
+    transform: translate3d(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy)), 0) scale(0.3);
     z-index: 150;
     box-shadow:
         0 0 15px var(--glow-idle),
@@ -202,7 +207,7 @@ body {
 
 .menu-item.visible {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy)), 0) scale(var(--scale));
 }
 
 .menu-item.nested-item {
