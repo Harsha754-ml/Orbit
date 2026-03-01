@@ -112,9 +112,10 @@ function createWindow() {
 function showWindow() {
   if (!mainWindow) return;
   const cursorPoint = screen.getCursorScreenPoint();
-  // Send cursor position so renderer knows where to center
+  // Show window first so it's ready to receive IPC
   mainWindow.show();
-  mainWindow.setIgnoreMouseEvents(true, { forward: true });
+  // We don't force setIgnoreMouseEvents(true) here; 
+  // let the renderer or the previous state decide.
   mainWindow.webContents.send('window-shown', cursorPoint);
 }
 
@@ -130,11 +131,7 @@ function setupIpcHandlers() {
   // Mouse event toggle — renderer controls this
   ipcMain.on('set-ignore-mouse', (event, ignore) => {
     if (!mainWindow) return;
-    if (ignore) {
-      mainWindow.setIgnoreMouseEvents(true, { forward: true });
-    } else {
-      mainWindow.setIgnoreMouseEvents(false);
-    }
+    mainWindow.setIgnoreMouseEvents(ignore, { forward: true });
   });
 
   ipcMain.on('execute-action', (event, action) => {

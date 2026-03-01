@@ -123,43 +123,35 @@ async function init() {
 // ============================================
 
 function updateHitDetection(mx, my) {
-    if (currentState.state === 'IDLE' && !currentState.isEditMode) {
-        // Window should be fully click-through when idle
-        if (currentState.cursorInBounds) {
-            currentState.cursorInBounds = false;
-            window.orbitAPI.setIgnoreMouse(true);
-        }
-        return;
-    }
+    // Determine if window should be interactive
+    let shouldIgnore = true;
 
-    // Edit mode — entire modal area is interactive
     if (currentState.isEditMode) {
-        if (!currentState.cursorInBounds) {
-            currentState.cursorInBounds = true;
-            window.orbitAPI.setIgnoreMouse(false);
+        shouldIgnore = false;
+    } else if (currentState.state !== 'IDLE') {
+        // Active mode — check if cursor is within radial bounds
+        const cx = currentState.radialCenter.x;
+        const cy = currentState.radialCenter.y;
+        const radius = currentState.levelStack.length > 0
+            ? (currentState.config.groupRadius || 75)
+            : (currentState.config.radius || 100);
+        const hitRadius = radius + 60; // Extra padding for item hover
+
+        const dist = Math.hypot(mx - cx, my - cy);
+        const isInside = dist <= hitRadius;
+
+        if (isInside) {
+            shouldIgnore = false;
+        } else {
+            // Close menu when cursor leaves radial zone
+            closeMenu();
         }
-        return;
     }
 
-    // Active mode — check if cursor is within radial bounds
-    const cx = currentState.radialCenter.x;
-    const cy = currentState.radialCenter.y;
-    const radius = currentState.levelStack.length > 0
-        ? (currentState.config.groupRadius || 75)
-        : (currentState.config.radius || 100);
-    const hitRadius = radius + 60; // Extra padding for item hover
-
-    const dist = Math.hypot(mx - cx, my - cy);
-    const isInside = dist <= hitRadius;
-
-    if (isInside && !currentState.cursorInBounds) {
-        currentState.cursorInBounds = true;
-        window.orbitAPI.setIgnoreMouse(false);
-    } else if (!isInside && currentState.cursorInBounds) {
-        currentState.cursorInBounds = false;
-        window.orbitAPI.setIgnoreMouse(true);
-        // Close menu when cursor leaves radial zone
-        closeMenu();
+    // Only send IPC if state actually changed
+    if (currentState.cursorInBounds === shouldIgnore) {
+        currentState.cursorInBounds = !shouldIgnore;
+        window.orbitAPI.setIgnoreMouse(shouldIgnore);
     }
 }
 
