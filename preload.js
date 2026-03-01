@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('orbitAPI', {
   onWindowShown: (callback) => ipcRenderer.on('window-shown', (event, cursorPoint) => callback(cursorPoint)),
   updateRadius: (radius) => ipcRenderer.send('update-radius', radius),
   addAction: (action) => ipcRenderer.send('add-action', action),
-  setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore)
+  setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore),
+  updateConfig: (config) => ipcRenderer.send('update-config', config)
 });

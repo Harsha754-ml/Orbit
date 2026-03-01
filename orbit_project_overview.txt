@@ -1,0 +1,80 @@
+Orbit Premium - Project Overview
+
+================================================================================
+1. PROJECT SUMMARY
+================================================================================
+Orbit is a high-performance, aesthetically-driven radial launcher for Windows. 
+It providing a system-wide, context-aware overlay that allows users to launch 
+applications, open websites, manage system power, and organize shortcuts with 
+a minimalistic and premium user experience.
+
+================================================================================
+2. TECHNICAL STACK
+================================================================================
+- Core Framework: Electron (v40.6.1)
+- Programming Languages: JavaScript (ES6+), HTML5, CSS3
+- Trigger System: AutoHotkey v2.0 (for global middle-click intercept)
+- Styling: Vanilla CSS with HSL color tokens, Glassmorphism, and Blur effects
+- Backend: Node.js (Path handling, Child Process execution, File System)
+- Data Storage: Local JSON configuration (config.json, themes.json)
+
+================================================================================
+3. CORE FEATURES
+================================================================================
+
+A. INTERACTIVE RADIAL UI
+- Dynamic Positioning: Spawns exactly at the cursor's location.
+- Parallax Effects: Smooth mouse-driven parallax for the center piece.
+- Proximity Scaling: Icons scale and gravitate toward the cursor as it nears.
+- Interactive Ripples: Visual feedback on menu expansion and execute actions.
+
+B. SMART CLICK-THROUGH ARCHITECTURE
+- Selective Interaction: The window is 100% transparent and click-through by 
+  default. Interaction is only enabled within the radial hit-zone.
+- Automated Closure: The menu automatically closes if the mouse leaves the 
+  interaction radius.
+
+C. CONTEXT-AWARE TRIGGERING (AHK)
+- Browser Rules: Can require Ctrl+MiddleClick in browsers to prevent 
+  interference with default browser behavior.
+- Desktop Restriction: Option to only allow the trigger when no foreground 
+  window is active (Desktop mode).
+- Window Synchronization: Seamless title and focus matching between AHK and Electron.
+
+D. ICON MANAGEMENT & NESTING
+- Right-Click Context Menu: Manage icons directly from the UI.
+- Delete: Instantly remove shortcuts.
+- Nesting: Create new groups and move icons into them via the context menu.
+- Infinite Depth: Supports deeply nested groups for advanced organization.
+
+E. THEME ENGINE
+- Dynamic Switching: Real-time theme application without restart.
+- Included Themes: Dark Neon, Minimal Frost, Cyber Blue, Mono Glass.
+- Customizable: Themes control blur intensity, accent colors, and animation speeds.
+
+F. ACTION SYSTEM
+- Auto-Detect: Can automatically locate VS Code and Windows Terminal.
+- URL Support: Directly open websites in the default system browser.
+- File System: Launch any executable or open any folder path.
+- System Commands: Shutdown, Restart, Lock Workstation, and Task Manager.
+
+================================================================================
+4. CONFIGURATION & EXTENSIBILITY
+================================================================================
+- config.json: Controls radius, themes, hotkeys, and the entire action tree.
+- themes.json: Definition of visual styles and colors.
+- preload.js: Secure API exposed to the renderer (config updates, sound, IPC).
+- main.js: Orchestrates window state, focus, and system-level execution.
+
+================================================================================
+5. USER EXPERIENCE (UX)
+================================================================================
+- Fast: Near-instant startup and expansion.
+- Minimal: No taskbar presence or window frame.
+- Sound: Integrated audio feedback (Expand, Collapse, Execute).
+- Feedback: Hover labels and dev-mode overlays for debugging.
+
+================================================================================
+Created on: 2026-03-01
+Version: 1.0.0 (Premium)
+================================================================================

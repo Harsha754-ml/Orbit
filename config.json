@@ -3,11 +3,11 @@
   "radius": 100,
   "primaryRadius": 100,
   "groupRadius": 75,
-  "activeTheme": "Dark Neon",
-  "animationSpeed": 1.0,
+  "activeTheme": "Minimal Frost",
+  "animationSpeed": 1,
   "enableSoundEffects": true,
   "gestureNavigationEnabled": true,
-  "devMode": false,
+  "devMode": true,
   "showHoverLabels": true,
   "requireCtrlInBrowsers": true,
   "restrictToDesktop": true,
@@ -35,9 +35,24 @@
       "label": "Power",
       "icon": "shutdown.svg",
       "children": [
-        { "type": "command", "label": "Shutdown", "icon": "shutdown.svg", "command": "shutdown /s /t 10" },
-        { "type": "command", "label": "Restart", "icon": "restart.svg", "command": "shutdown /r /t 10" },
-        { "type": "command", "label": "Lock", "icon": "lock.svg", "command": "rundll32.exe user32.dll,LockWorkStation" }
+        {
+          "type": "command",
+          "label": "Shutdown",
+          "icon": "shutdown.svg",
+          "command": "shutdown /s /t 10"
+        },
+        {
+          "type": "command",
+          "label": "Restart",
+          "icon": "restart.svg",
+          "command": "shutdown /r /t 10"
+        },
+        {
+          "type": "command",
+          "label": "Lock",
+          "icon": "lock.svg",
+          "command": "rundll32.exe user32.dll,LockWorkStation"
+        }
       ]
     },
     {
@@ -51,7 +66,12 @@
       "label": "Custom",
       "icon": "custom.svg",
       "children": [
-        { "type": "command", "label": "Add New", "icon": "plus.svg", "command": "ui:open-add-action" }
+        {
+          "type": "command",
+          "label": "Add New",
+          "icon": "plus.svg",
+          "command": "ui:open-add-action"
+        }
       ]
     },
     {
@@ -59,9 +79,24 @@
       "label": "Settings",
       "icon": "settings.svg",
       "children": [
-        { "type": "command", "label": "Toggle Labels", "icon": "label.svg", "command": "ui:toggle-labels" },
-        { "type": "command", "label": "Toggle Sound", "icon": "sound.svg", "command": "ui:toggle-sound" },
-        { "type": "command", "label": "Toggle DevMode", "icon": "code.svg", "command": "ui:toggle-dev" }
+        {
+          "type": "command",
+          "label": "Toggle Labels",
+          "icon": "label.svg",
+          "command": "ui:toggle-labels"
+        },
+        {
+          "type": "command",
+          "label": "Toggle Sound",
+          "icon": "sound.svg",
+          "command": "ui:toggle-sound"
+        },
+        {
+          "type": "command",
+          "label": "Toggle DevMode",
+          "icon": "code.svg",
+          "command": "ui:toggle-dev"
+        }
       ]
     },
     {
@@ -69,10 +104,30 @@
       "label": "Themes",
       "icon": "themes.svg",
       "children": [
-        { "type": "command", "label": "Dark Neon", "icon": "themes.svg", "command": "theme:Dark Neon" },
-        { "type": "command", "label": "Minimal Frost", "icon": "themes.svg", "command": "theme:Minimal Frost" },
-        { "type": "command", "label": "Cyber Blue", "icon": "themes.svg", "command": "theme:Cyber Blue" },
-        { "type": "command", "label": "Mono Glass", "icon": "themes.svg", "command": "theme:Mono Glass" }
+        {
+          "type": "command",
+          "label": "Dark Neon",
+          "icon": "themes.svg",
+          "command": "theme:Dark Neon"
+        },
+        {
+          "type": "command",
+          "label": "Minimal Frost",
+          "icon": "themes.svg",
+          "command": "theme:Minimal Frost"
+        },
+        {
+          "type": "command",
+          "label": "Cyber Blue",
+          "icon": "themes.svg",
+          "command": "theme:Cyber Blue"
+        },
+        {
+          "type": "command",
+          "label": "Mono Glass",
+          "icon": "themes.svg",
+          "command": "theme:Mono Glass"
+        }
       ]
     },
     {
@@ -80,6 +135,12 @@
       "label": "Web Search",
       "icon": "web.svg",
       "path": "https://www.google.com"
+    },
+    {
+      "type": "custom",
+      "label": "Epic",
+      "path": "\"C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Epic Games Launcher.lnk\"",
+      "icon": ""
     }
   ]
 }

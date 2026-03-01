@@ -1,5 +1,6 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
+SetTitleMatchMode 2 ; Robust window title matching
 
 ; Orbit Premium Context-Aware Trigger
 ; Dynamically reads config.json for rules and hotkey

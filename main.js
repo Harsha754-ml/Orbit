@@ -94,6 +94,7 @@ function createWindow() {
     movable: false,
     hasShadow: false,
     backgroundColor: '#00000000',
+    title: 'Orbit Premium',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -114,6 +115,7 @@ function showWindow() {
   const cursorPoint = screen.getCursorScreenPoint();
   // Show window first so it's ready to receive IPC
   mainWindow.show();
+  mainWindow.focus(); // Ensure it takes focus for AHK detection
   // We don't force setIgnoreMouseEvents(true) here; 
   // let the renderer or the previous state decide.
   mainWindow.webContents.send('window-shown', cursorPoint);
@@ -131,7 +133,11 @@ function setupIpcHandlers() {
   // Mouse event toggle — renderer controls this
   ipcMain.on('set-ignore-mouse', (event, ignore) => {
     if (!mainWindow) return;
-    mainWindow.setIgnoreMouseEvents(ignore, { forward: true });
+    if (ignore) {
+      mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    } else {
+      mainWindow.setIgnoreMouseEvents(false);
+    }
   });
 
   ipcMain.on('execute-action', (event, action) => {
@@ -149,6 +155,10 @@ function setupIpcHandlers() {
   ipcMain.on('add-action', (event, newAction) => {
     const actions = [...config.actions, newAction];
     updateConfig({ actions: actions });
+  });
+
+  ipcMain.on('update-config', (event, newConfig) => {
+    updateConfig(newConfig);
   });
 }
 

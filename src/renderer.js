@@ -14,7 +14,12 @@ let currentState = {
     mouseY: 0,
     parallax: { x: 0, y: 0 },
     radialCenter: { x: 0, y: 0 }, // Where the radial spawned (pixel coords)
-    cursorInBounds: false
+    cursorInBounds: false,
+    contextMenu: {
+        visible: false,
+        selectedAction: null,
+        targetElement: null
+    }
 };
 
 // DOM REFS
@@ -25,6 +30,7 @@ const rippleContainer = document.getElementById('ripple-container');
 const devOverlay = document.getElementById('dev-overlay');
 const hoverLabel = document.getElementById('hover-label');
 const editModalOverlay = document.getElementById('edit-modal-overlay');
+const iconContextMenu = document.getElementById('icon-context-menu');
 
 let animationFrame = null;
 let clickTimer = null;
@@ -89,7 +95,12 @@ async function init() {
     });
 
     document.body.addEventListener('contextmenu', (e) => {
-        if (e.target.closest('.center-piece') || e.target.closest('.edit-modal-overlay')) return;
+        if (e.target.closest('.center-piece') || 
+            e.target.closest('.menu-item') || 
+            e.target.closest('.icon-context-menu') || 
+            e.target.closest('.edit-modal-overlay')) {
+            return;
+        }
         e.preventDefault();
         goBack();
     });
@@ -114,6 +125,14 @@ async function init() {
         if (e.target === editModalOverlay) closeModal();
     });
 
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.icon-context-menu')) {
+            hideContextMenu();
+        }
+    });
+
+    document.addEventListener('scroll', () => hideContextMenu(), { capture: true });
+
     startParallaxLoop();
     renderOrbit();
 }
@@ -126,7 +145,7 @@ function updateHitDetection(mx, my) {
     // Determine if window should be interactive
     let shouldIgnore = true;
 
-    if (currentState.isEditMode) {
+    if (currentState.isEditMode || currentState.contextMenu.visible) {
         shouldIgnore = false;
     } else if (currentState.state !== 'IDLE') {
         // Active mode — check if cursor is within radial bounds
@@ -226,6 +245,12 @@ function renderOrbit() {
         item.onclick = (e) => {
             e.stopPropagation();
             handleItemClick(action, item);
+        };
+
+        item.oncontextmenu = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showContextMenu(action, e.clientX, e.clientY, item);
         };
 
         menuContainer.appendChild(item);
@@ -550,6 +575,98 @@ function startParallaxLoop() {
         animationFrame = requestAnimationFrame(loop);
     };
     loop();
+}
+
+// ============================================
+// ICON MANAGEMENT (CONTEXT MENU)
+// ============================================
+
+function showContextMenu(action, x, y, element) {
+    currentState.contextMenu.selectedAction = action;
+    currentState.contextMenu.targetElement = element;
+    currentState.contextMenu.visible = true;
+
+    iconContextMenu.style.left = `${x}px`;
+    iconContextMenu.style.top = `${y}px`;
+    iconContextMenu.classList.add('active');
+    
+    // Ensure it doesn't go off screen
+    const rect = iconContextMenu.getBoundingClientRect();
+    if (x + rect.width > window.innerWidth) iconContextMenu.style.left = `${x - rect.width}px`;
+    if (y + rect.height > window.innerHeight) iconContextMenu.style.top = `${y - rect.height}px`;
+
+    window.orbitAPI.setIgnoreMouse(false);
+}
+
+function hideContextMenu() {
+    if (!currentState.contextMenu.visible) return;
+    currentState.contextMenu.visible = false;
+    iconContextMenu.classList.remove('active');
+    updateHitDetection(currentState.mouseX, currentState.mouseY);
+}
+
+async function handleContextMenuAction(type) {
+    const action = currentState.contextMenu.selectedAction;
+    if (!action) return;
+
+    hideContextMenu();
+
+    if (type === 'delete') {
+        if (confirm(`Delete "${action.label}"?`)) {
+            removeActionFromConfig(action);
+        }
+    } else if (type === 'nest') {
+        const groupName = prompt('Enter group name to nest into (will create if doesn\'t exist):');
+        if (groupName) {
+            nestActionIntoGroup(action, groupName);
+        }
+    } else if (type === 'move') {
+        alert('Move mode: In a future update, you will be able to drag and drop or select a target group from a list.');
+    }
+}
+
+function removeActionFromConfig(targetAction) {
+    const filterActions = (actions) => {
+        return actions.filter(a => a !== targetAction).map(a => {
+            if (a.type === 'group' && a.children) {
+                return { ...a, children: filterActions(a.children) };
+            }
+            return a;
+        });
+    };
+
+    const newActions = filterActions(currentState.config.actions);
+    window.orbitAPI.updateConfig({ actions: newActions });
+}
+
+function nestActionIntoGroup(targetAction, groupName) {
+    // 1. Remove from current position
+    const actionsWithoutItem = (actions) => {
+        return actions.filter(a => a !== targetAction).map(a => {
+            if (a.type === 'group' && a.children) {
+                return { ...a, children: actionsWithoutItem(a.children) };
+            }
+            return a;
+        });
+    };
+
+    let newActions = actionsWithoutItem(currentState.config.actions);
+
+    // 2. Find or create group at root for simplicity in this version
+    let group = newActions.find(a => a.type === 'group' && a.label.toLowerCase() === groupName.toLowerCase());
+    
+    if (group) {
+        group.children.push(targetAction);
+    } else {
+        newActions.push({
+            type: 'group',
+            label: groupName,
+            icon: 'custom.svg',
+            children: [targetAction]
+        });
+    }
+
+    window.orbitAPI.updateConfig({ actions: newActions });
 }
 
 // ============================================

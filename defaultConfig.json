@@ -1,0 +1,43 @@
+{
+  "hotkey": "MButton",
+  "radius": 100,
+  "primaryRadius": 100,
+  "groupRadius": 75,
+  "activeTheme": "Dark Neon",
+  "animationSpeed": 1.0,
+  "enableSoundEffects": true,
+  "gestureNavigationEnabled": true,
+  "devMode": false,
+  "showHoverLabels": true,
+  "requireCtrlInBrowsers": true,
+  "restrictToDesktop": true,
+  "browserList": [
+    "chrome.exe",
+    "msedge.exe",
+    "firefox.exe"
+  ],
+  "actions": [
+    {
+      "type": "command",
+      "label": "VS Code",
+      "icon": "vscode.svg",
+      "command": "auto-detect"
+    },
+    {
+      "type": "command",
+      "label": "Terminal",
+      "icon": "terminal.svg",
+      "command": "auto-detect"
+    },
+    {
+      "type": "group",
+      "label": "Settings",
+      "icon": "settings.svg",
+      "children": [
+        { "type": "command", "label": "Toggle Labels", "icon": "label.svg", "command": "ui:toggle-labels" },
+        { "type": "command", "label": "Toggle Sound", "icon": "sound.svg", "command": "ui:toggle-sound" },
+        { "type": "command", "label": "Toggle DevMode", "icon": "code.svg", "command": "ui:toggle-dev" }
+      ]
+    }
+  ]
+}

@@ -14,6 +14,17 @@
         <div id="radial-menu" class="radial-menu"></div>
         <div id="hover-label" class="hover-label"></div>
         <div id="dev-overlay" class="dev-overlay"></div>
+        <div id="icon-context-menu" class="icon-context-menu">
+            <div class="menu-option delete" onclick="handleContextMenuAction('delete')">
+                <span class="option-icon">🗑️</span> Delete
+            </div>
+            <div class="menu-option nest" onclick="handleContextMenuAction('nest')">
+                <span class="option-icon">📂</span> Nest Into Group
+            </div>
+            <div class="menu-option move" onclick="handleContextMenuAction('move')">
+                <span class="option-icon">↔️</span> Move To
+            </div>
+        </div>
     </div>
 
     <!-- Layer 2: Edit Mode Modal (conditionally rendered) -->
