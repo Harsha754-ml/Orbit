@@ -77,7 +77,7 @@ Orbit 2.0 is built for **Enterprise-Grade Stability**:
 
 ## 📄 License
 
-MIT License. Developed with ❤️ for the Windows Enthusiast.
+MIT License.
 
 ---
 

@@ -213,64 +213,28 @@ function setupIpcHandlers() {
   });
 }
 
-function handleAction(action) {
-  if (type === 'custom') {
-    const pathValue = action.path;
-    if (!pathValue) return;
+const { exec } = require('child_process');
 
-    if (pathValue.startsWith('http')) {
-      shell.openExternal(pathValue);
-    } else if (fs.existsSync(pathValue)) {
-      const stats = fs.statSync(pathValue);
-      if (stats.isDirectory()) {
-        shell.openPath(pathValue);
-      } else {
-        exec(`"${pathValue}" ${action.args || ''}`);
-      }
-    } else {
-      if (config.devMode) console.error(`Path not found: ${pathValue}`);
-    }
+function handleAction(action) {
+  if (!action) return;
+
+  const { type, path: pathValue, cmd, args } = action;
+
+  if (type === 'custom') {
+    if (!pathValue) return;
+    executeApp(pathValue, args);
     return;
   }
 
   if (cmd) {
     exec(cmd, (err) => {
-      if (err) console.error(`Action failed: ${cmd}`, err);
+      if (err) logger.error('action_failed', { cmd, error: err.message });
     });
   }
 }
 
-function updateConfig(newValues) {
-  config = { ...config, ...newValues };
-  try {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-    if (mainWindow) mainWindow.webContents.send('config-updated', config);
-  } catch (err) {
-    console.error('Failed to update config', err);
-  }
-}
 
-function launchVSCode() {
-  const userPath = path.join(process.env.LOCALAPPDATA, 'Programs', 'Microsoft VS Code', 'Code.exe');
-  const systemPath = 'C:\\Program Files\\Microsoft VS Code\\Code.exe';
-  if (fs.existsSync(userPath)) exec(`"${userPath}"`);
-  else if (fs.existsSync(systemPath)) exec(`"${systemPath}"`);
-  else exec('where code', (err, stdout) => {
-    if (!err) exec(`"${stdout.trim()}"`);
-    else console.error('VS Code not found');
-  });
-}
 
-function launchTerminal() {
-  const localPath = path.join(process.env.LOCALAPPDATA, 'Microsoft', 'WindowsApps', 'wt.exe');
-  if (fs.existsSync(localPath)) exec(`"${localPath}"`);
-  else exec('start "" "wt.exe"', (err) => {
-    if (err) console.error('Windows Terminal not found');
-  });
-}
-
-const orbitState = require('./lib/state');
-const contextEngine = require('./lib/contextEngine');
 
 contextEngine.on('context-changed', (data) => {
     if (mainWindow) {
@@ -288,4 +252,8 @@ fs.watchFile(path.join(process.cwd(), 'config.json'), () => {
 fs.watchFile(path.join(process.cwd(), 'themes.json'), () => {
     logger.info('themes_hot_reload_triggered');
     if (mainWindow) mainWindow.webContents.send('themes-updated');
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
 });
