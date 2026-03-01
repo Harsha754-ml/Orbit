@@ -1,21 +1,27 @@
-const { app, BrowserWindow, ipcMain, screen, shell } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, shell, Tray, Menu } = require('electron');
 const path = require('path');
-const { exec } = require('child_process');
 const fs = require('fs');
 
+// Hardened lib modules
+const logger = require('./lib/logger');
+const orbitState = require('./lib/state');
+const { loadConfig, writeConfigSafe } = require('./lib/configLoader');
+const { executeApp } = require('./lib/executor');
+const { getCursorPositionScaled } = require('./lib/windowUtils');
+
 let mainWindow;
-let config;
-let themes;
+let tray = null;
+let config = null;
+let rendererCrashCount = 0;
 
-const CONFIG_PATH = app.isPackaged 
-  ? path.join(app.getPath('userData'), 'config.json') 
-  : path.join(__dirname, 'config.json');
-const THEMES_PATH = app.isPackaged 
-  ? path.join(app.getPath('userData'), 'themes.json') 
-  : path.join(__dirname, 'themes.json');
+// Global Error Boundaries
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception:', err.stack || err);
+});
 
-const DEFAULT_CONFIG_PATH = path.join(__dirname, 'config.json');
-const DEFAULT_THEMES_PATH = path.join(__dirname, 'themes.json');
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Single Instance Lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -26,166 +32,132 @@ if (!gotTheLock) {
     if (mainWindow) showWindow();
   });
   app.whenReady().then(() => {
-    ensureFilesExist();
-    loadConfig();
-    loadThemes();
+    config = loadConfig(); // Load config early
     createWindow();
-    watchFiles();
+    createTray();
   });
 }
 
-function ensureFilesExist() {
-  if (app.isPackaged) {
-    if (!fs.existsSync(CONFIG_PATH) && fs.existsSync(DEFAULT_CONFIG_PATH)) {
-      fs.copyFileSync(DEFAULT_CONFIG_PATH, CONFIG_PATH);
-    }
-    if (!fs.existsSync(THEMES_PATH) && fs.existsSync(DEFAULT_THEMES_PATH)) {
-      fs.copyFileSync(DEFAULT_THEMES_PATH, THEMES_PATH);
-    }
-  }
-}
-
-function loadConfig() {
-  try {
-    const data = fs.readFileSync(CONFIG_PATH, 'utf8');
-    config = JSON.parse(data);
-  } catch (err) {
-    console.error('Failed to load config, using defaults', err);
-    config = { radius: 140, activeTheme: 'Dark Neon', actions: [] };
-  }
-}
-
-function loadThemes() {
-  try {
-    const data = fs.readFileSync(THEMES_PATH, 'utf8');
-    themes = JSON.parse(data);
-  } catch (err) {
-    console.error('Failed to load themes', err);
-    themes = [];
-  }
-}
-
-function watchFiles() {
-  fs.watchFile(CONFIG_PATH, () => {
-    loadConfig();
-    if (mainWindow) mainWindow.webContents.send('config-updated', config);
-  });
-  fs.watchFile(THEMES_PATH, () => {
-    loadThemes();
-    if (mainWindow) mainWindow.webContents.send('themes-updated', themes);
-  });
+function createTray() {
+  tray = new Tray(path.join(__dirname, 'assets', 'icon.png')); // Replace with your tray icon path
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Show Orbit', click: () => showWindow() },
+    { label: 'Quit', click: () => app.quit() }
+  ]);
+  tray.setToolTip('Orbit Premium');
+  tray.setContextMenu(contextMenu);
+  tray.on('click', () => showWindow());
 }
 
 function createWindow() {
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width, height } = primaryDisplay.workAreaSize;
-
+  config = loadConfig();
+  
   mainWindow = new BrowserWindow({
-    width: width,
-    height: height,
-    x: 0,
-    y: 0,
-    frame: false,
+    width: 800,
+    height: 600,
     transparent: true,
+    frame: false,
+    hasShadow: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    show: false,
-    resizable: false,
-    movable: false,
-    hasShadow: false,
-    backgroundColor: '#00000000',
     title: 'Orbit Premium',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
       contextIsolation: true,
-      nodeIntegration: false
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
-
-  // Click-through by default — renderer toggles this
+  mainWindow.loadFile('src/index.html');
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
+  mainWindow.maximize();
 
+  setupLifecycleGuards(mainWindow);
   setupIpcHandlers();
 }
 
+function setupLifecycleGuards(win) {
+  win.webContents.on('render-process-gone', (event, details) => {
+    logger.error('Renderer process gone:', details);
+    rendererCrashCount++;
+    
+    if (rendererCrashCount <= 3) {
+      logger.info(`Attempting renderer recovery (Attempt ${rendererCrashCount}/3)...`);
+      win.reload();
+    } else {
+      logger.error('Renderer recovery failed after 3 attempts.');
+      app.quit();
+    }
+  });
+
+  win.on('unresponsive', () => {
+    logger.warn('Window detected as unresponsive.');
+  });
+}
+
 function showWindow() {
-  if (!mainWindow) return;
-  const cursorPoint = screen.getCursorScreenPoint();
-  // Show window first so it's ready to receive IPC
+  if (orbitState.isLocked()) return; // Failsafe
+
+  const { x, y, display } = getCursorPositionScaled();
+  orbitState.setCursor(x, y);
+  orbitState.setMode(orbitState.modes.EXPANDING);
+
+  mainWindow.webContents.send('window-shown', { x, y });
+  
   mainWindow.show();
-  mainWindow.focus(); // Ensure it takes focus for AHK detection
-  // We don't force setIgnoreMouseEvents(true) here; 
-  // let the renderer or the previous state decide.
-  mainWindow.webContents.send('window-shown', cursorPoint);
+  mainWindow.focus();
+
+  // Reset crash count on successful show
+  rendererCrashCount = 0;
 }
 
 function setupIpcHandlers() {
   ipcMain.handle('get-config', () => config);
-  ipcMain.handle('get-themes', () => themes);
-
-  ipcMain.on('hide-app', () => {
-    mainWindow.setIgnoreMouseEvents(true, { forward: true });
-    mainWindow.hide();
+  ipcMain.handle('get-themes', () => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(__dirname, 'themes.json'), 'utf8'));
+    } catch (e) {
+      return [];
+    }
   });
 
-  // Mouse event toggle — renderer controls this
+  const allowedChannels = ['toggle-mouse', 'execute-action', 'update-config', 'set-state'];
+
+  ipcMain.on('orbit-api', (event, channel, data) => {
+    if (!allowedChannels.includes(channel)) {
+      logger.warn(`Blocked unauthorized IPC channel: ${channel}`);
+      return;
+    }
+
+    switch (channel) {
+      case 'toggle-mouse':
+        mainWindow.setIgnoreMouseEvents(data, { forward: true });
+        break;
+      case 'execute-action':
+        handleAction(data);
+        break;
+      case 'update-config':
+        config = { ...config, ...data };
+        writeConfigSafe(config);
+        break;
+      case 'set-state':
+        orbitState.setMode(data.mode);
+        break;
+    }
+  });
+
+  // Keep compatibility for simple calls if needed
   ipcMain.on('set-ignore-mouse', (event, ignore) => {
-    if (!mainWindow) return;
-    if (ignore) {
-      mainWindow.setIgnoreMouseEvents(true, { forward: true });
-    } else {
-      mainWindow.setIgnoreMouseEvents(false);
-    }
-  });
-
-  ipcMain.on('execute-action', (event, action) => {
-    handleAction(action);
-    if (!config.devMode) {
-      mainWindow.setIgnoreMouseEvents(true, { forward: true });
-      mainWindow.hide();
-    }
-  });
-
-  ipcMain.on('update-radius', (event, radius) => {
-    updateConfig({ radius: radius, primaryRadius: radius });
-  });
-
-  ipcMain.on('add-action', (event, newAction) => {
-    const actions = [...config.actions, newAction];
-    updateConfig({ actions: actions });
+    mainWindow.setIgnoreMouseEvents(ignore, { forward: true });
   });
 
   ipcMain.on('update-config', (event, newConfig) => {
-    updateConfig(newConfig);
+    config = { ...config, ...newConfig };
+    writeConfigSafe(config);
   });
 }
 
 function handleAction(action) {
-  const cmd = action.command;
-  const type = action.type;
-  
-  if (cmd === 'auto-detect') {
-    if (action.label === 'VS Code') launchVSCode();
-    else if (action.label === 'Terminal') launchTerminal();
-    return;
-  }
-
-  if (cmd && cmd.startsWith('theme:')) {
-    const themeName = cmd.replace('theme:', '');
-    updateConfig({ activeTheme: themeName });
-    return;
-  }
-
-  if (cmd && cmd.startsWith('ui:toggle-')) {
-    if (cmd === 'ui:toggle-labels') updateConfig({ showHoverLabels: !config.showHoverLabels });
-    else if (cmd === 'ui:toggle-sound') updateConfig({ enableSoundEffects: !config.enableSoundEffects });
-    else if (cmd === 'ui:toggle-dev') updateConfig({ devMode: !config.devMode });
-    return;
-  }
-
-  // Custom Action Logic
   if (type === 'custom') {
     const pathValue = action.path;
     if (!pathValue) return;

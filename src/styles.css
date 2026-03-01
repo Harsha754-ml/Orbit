@@ -556,6 +556,51 @@ body {
     opacity: 0.8;
 }
 
+/* ============================================
+   DEBUG PANEL
+   ============================================ */
+
+.debug-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 255, 127, 0.3);
+    padding: 12px;
+    border-radius: 8px;
+    font-family: 'Consolas', monospace;
+    font-size: 11px;
+    color: #00ff7f;
+    z-index: 3000;
+    pointer-events: none;
+    display: none;
+    min-width: 180px;
+}
+
+.debug-panel.active {
+    display: block;
+}
+
+.debug-title {
+    font-weight: bold;
+    border-bottom: 1px solid rgba(0, 255, 127, 0.2);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.debug-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+
+.debug-row span {
+    opacity: 0.7;
+}
+
 body.edit-mode .orbit-overlay {
     opacity: 0.35;
     pointer-events: none;

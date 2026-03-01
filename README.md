@@ -24,10 +24,11 @@ Orbit is a minimalist control hub designed to replace cluttered desktops and tas
 ```mermaid
 graph TD
     Trigger[Trigger AHK] -->|Hotkey| Main[Main Process Electron]
-    Main -->|Config/Theme Watcher| Preload[Preload Bridge]
-    Preload -->|Secure IPC| Renderer[Renderer Vanilla JS]
-    Renderer -->|State Machine| UI[Radial UI]
-    UI -->|CSS Variables| Themes[Theme Engine]
+    Main -->|Validated Load| Config[Config Loader & FSM]
+    Main -->|Lifecycle Guards| Recovery[Renderer Recovery]
+    Config -->|Secure IPC| Preload[Secure Bridge]
+    Preload -->|FSM State| Renderer[Renderer JS]
+    Renderer -->|Telemetry| Debug[Debug Overlay]
 ```
 
 ---
@@ -35,12 +36,13 @@ graph TD
 ## ✨ Features
 
 - **🎯 Precision Centering**: Always launches exactly at your cursor position.
-- **🌀 Liquid Glass UI**: Immersive dark-glass aesthetic with zero-interference click-through.
+- **🛡️ Hardened Stability**: Finite State Machine (FSM) prevents state desyncs and spam.
+- **🔒 Atomic Writes**: Config safety with `fsync` and temp-file strategies.
 - **📁 Nested Groups**: Organize unlimited apps and commands into logical orbits.
-- **🎨 Pro-Grade Themes**: Swappable HSL-tailored themes (Neon, Frost, Cyber, Glass).
+- **🎨 Pro-Grade Themes**: Swappable HSL-tailored themes.
 - **🛠️ Dynamic Icon System**: Auto-generates sleek letter-glyphs if SVGs are missing.
-- **🚀 Ultra-Low Latency**: Performance-optimized DOM strategy for <100ms reveal.
-- **🔊 Spatial Audio**: Haptic-style sonic feedback for every interaction.
+- **🚀 Secure Execution**: Whitelisted path resolution for apps and commands.
+- **� Real-time Telemetry**: Debug panel for live state and coordinate tracking.
 
 ---
 
@@ -61,14 +63,8 @@ npm install
 
 1. Run `orbit-trigger.ahk` to enable the system-wide hotkey.
 2. Press **Middle Mouse Button** (default) to summon the Orbit.
-3. **Double Click** center for settings; **Right Click** center to add custom apps.
-4. **Right Click** anywhere else to navigate back/close.
-
-### 4. Build Production
-
-```powershell
-npm run build
-```
+3. **Double Click** center for settings; **Right Click** center for Icon Management.
+4. **Right Click** on icons to delete, nest, or move them.
 
 ---
 
@@ -76,23 +72,25 @@ npm run build
 
 Customize Orbit via `config.json`:
 
-| Property      | Description                 | Default     |
-| ------------- | --------------------------- | ----------- |
-| `hotkey`      | Any valid AHK hotkey        | `MButton`   |
-| `radius`      | Distance from center        | `100`       |
-| `activeTheme` | Selected visual profile     | `Dark Neon` |
-| `devMode`     | Performance & State Overlay | `false`     |
+| Property      | Description                   | Default     |
+| ------------- | ----------------------------- | ----------- |
+| `hotkey`      | Any valid AHK hotkey          | `MButton`   |
+| `radius`      | Distance from center          | `140`       |
+| `activeTheme` | Selected visual profile       | `Dark Neon` |
+| `devMode`     | Telemetry & State Overlay     | `false`     |
+| `appVersion`  | Internal migration versioning | `1.0.0`     |
 
 ---
 
 ## 🧠 Core Engineering
 
-Orbit was developed with a multi-agent architectural focus:
+Orbit's architecture is built for mission-critical reliability:
 
-- **UI Orchestration**: Advanced state machine handling (IDLE/ACTIVE/COLLAPSING).
-- **System Integrity**: File system watchers with debouncing and graceful fallbacks.
-- **Security**: Zero-Node renderer boundary via secure Context Bridge.
-- **UX**: Proximity-based scaling and parallax effects for a "living" interface.
+- **State Integrity**: A robust Finite State Machine (IDLE/EXPANDING/ACTIVE/COLLAPSING) ensures smooth transitions.
+- **Crash Recovery**: Renderer processes feature a 3-retry auto-reload guard with tray notifications.
+- **Data Safety**: Config is validated via `Ajv` schema and saved atomically with disk synchronization.
+- **Security**: Strict IPC whitelisting and whitelisted path resolution for all custom actions.
+- **Monitoring**: Persistent file logging (`orbit.log`) and baseline-relative memory tracking.
 
 ---
 

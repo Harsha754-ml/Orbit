@@ -1,16 +1,20 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('orbitAPI', {
+  // Primary Hardened API
   getConfig: () => ipcRenderer.invoke('get-config'),
   getThemes: () => ipcRenderer.invoke('get-themes'),
-  hideApp: () => ipcRenderer.send('hide-app'),
-  executeAction: (action) => ipcRenderer.send('execute-action', action),
-  playSound: (soundType) => ipcRenderer.send('play-sound', soundType),
-  onConfigUpdated: (callback) => ipcRenderer.on('config-updated', (event, config) => callback(config)),
-  onThemesUpdated: (callback) => ipcRenderer.on('themes-updated', (event, themes) => callback(themes)),
-  onWindowShown: (callback) => ipcRenderer.on('window-shown', (event, cursorPoint) => callback(cursorPoint)),
-  updateRadius: (radius) => ipcRenderer.send('update-radius', radius),
-  addAction: (action) => ipcRenderer.send('add-action', action),
-  setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore),
-  updateConfig: (config) => ipcRenderer.send('update-config', config)
+  send: (channel, data) => {
+    const allowedChannels = ['toggle-mouse', 'execute-action', 'update-config', 'set-state'];
+    if (allowedChannels.includes(channel)) {
+      ipcRenderer.send('orbit-api', channel, data);
+    }
+  },
+
+  // Legacy/Specific Helpers (transitioning to .send)
+  onWindowShown: (callback) => ipcRenderer.on('window-shown', (event, data) => callback(data)),
+  updateConfig: (config) => ipcRenderer.send('orbit-api', 'update-config', config),
+  setIgnoreMouse: (ignore) => ipcRenderer.send('orbit-api', 'toggle-mouse', ignore),
+  executeAction: (action) => ipcRenderer.send('orbit-api', 'execute-action', action),
+  setState: (mode) => ipcRenderer.send('orbit-api', 'set-state', { mode })
 });

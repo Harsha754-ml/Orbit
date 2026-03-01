@@ -120,6 +120,30 @@ async function init() {
             window.orbitAPI.updateRadius(nr);
         }
     }, { passive: false });
+    // Initial state setup
+    window.orbitAPI.setState('idle');
+
+    document.addEventListener('mousemove', (e) => {
+        currentState.mouseX = e.clientX;
+        currentState.mouseY = e.clientY;
+        updateHitDetection(e.clientX, e.clientY);
+        
+        if (currentState.config.devMode) {
+            updateDebugOverlay();
+        }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+        if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
+            // Hotkey logic handled by AHK, but can be simulated here
+        }
+    });
+
+    window.orbitAPI.onWindowShown((data) => {
+        const { x, y } = data;
+        currentState.radialCenter = { x, y };
+        expandMenu();
+    });
 
     editModalOverlay.addEventListener('click', (e) => {
         if (e.target === editModalOverlay) closeModal();
@@ -135,6 +159,20 @@ async function init() {
 
     startParallaxLoop();
     renderOrbit();
+}
+
+function updateDebugOverlay() {
+    const debugPanel = document.getElementById('debug-panel');
+    if (!debugPanel) return;
+    
+    debugPanel.classList.add('active');
+    debugPanel.innerHTML = `
+        <div class="debug-title">Orbit State Telemetry</div>
+        <div class="debug-row"><span>State:</span> <b>${currentState.state}</b></div>
+        <div class="debug-row"><span>X:</span> ${currentState.mouseX}</div>
+        <div class="debug-row"><span>Y:</span> ${currentState.mouseY}</div>
+        <div class="debug-row"><span>InBounds:</span> ${currentState.cursorInBounds}</div>
+    `;
 }
 
 // ============================================
@@ -163,14 +201,16 @@ function updateHitDetection(mx, my) {
             shouldIgnore = false;
         } else {
             // Close menu when cursor leaves radial zone
-            closeMenu();
+            if (currentState.state === 'ACTIVE') {
+                 closeMenu();
+            }
         }
     }
 
     // Only send IPC if state actually changed
-    if (currentState.cursorInBounds === shouldIgnore) {
+    if (shouldIgnore !== (currentState.cursorInBounds === false)) {
         currentState.cursorInBounds = !shouldIgnore;
-        window.orbitAPI.setIgnoreMouse(shouldIgnore);
+        window.orbitAPI.send('toggle-mouse', shouldIgnore);
     }
 }
 
@@ -348,23 +388,93 @@ function toggleMenu() {
 }
 
 function expandMenu() {
-    currentState.state = 'ACTIVE';
-    // Ensure mouse interaction is enabled
-    currentState.cursorInBounds = true;
-    window.orbitAPI.setIgnoreMouse(false);
-    createRadialPulse();
-    createPulseRing();
-    renderOrbit();
-    playSound('expand');
+    window.orbitAPI.setState('expanding');
+    currentState.state = 'EXPANDING';
+    const menuContainer = document.getElementById('radial-menu');
+    menuContainer.innerHTML = '';
+    
+    // Position menu
+    menuContainer.style.left = `${currentState.radialCenter.x}px`;
+    menuContainer.style.top = `${currentState.radialCenter.y}px`;
+    menuContainer.classList.add('active');
+
+    const getVisibleActions = () => { // Helper function to get actions
+        return currentState.levelStack.length > 0
+            ? currentState.levelStack[currentState.levelStack.length - 1]
+            : currentState.config.actions;
+    };
+    const actions = getVisibleActions();
+    
+    actions.forEach((action, index) => {
+        const item = document.createElement('div'); // Re-creating item here as createMenuItem is not defined in the prompt
+        item.className = `menu-item${currentState.levelStack.length > 0 ? ' nested-item' : ''}`;
+
+        // Dynamic Icon
+        const iconEl = createIcon(action);
+        item.appendChild(iconEl);
+
+        // Position around radial center (re-using logic from renderOrbit)
+        const count = actions.length;
+        const isNested = currentState.levelStack.length > 0;
+        const radius = isNested
+            ? (currentState.config.groupRadius || 75)
+            : (currentState.config.radius || 100);
+        const angle = (index / count) * 2 * Math.PI - Math.PI / 2 + (-15 * Math.PI / 180);
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+
+        item.dataset.baseX = x;
+        item.dataset.baseY = y;
+        item.style.left = `${currentState.radialCenter.x + x - 23}px`; // 23 = item-size/2
+        item.style.top = `${currentState.radialCenter.y + y - 23}px`;
+
+        item.onmouseenter = () => {
+            if (currentState.config.showHoverLabels) showHoverLabel(action.label);
+        };
+        item.onmouseleave = () => hideHoverLabel();
+
+        item.onclick = (e) => {
+            e.stopPropagation();
+            handleItemClick(action, item);
+        };
+
+        item.oncontextmenu = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showContextMenu(action, e.clientX, e.clientY, item);
+        };
+
+        menuContainer.appendChild(item);
+        
+        setTimeout(() => item.classList.add('visible'), 
+            index * 12 * (currentState.config.animationSpeed || 1.0));
+    });
+
+    const expandDuration = Math.min(actions.length * 15, 300);
+    setTimeout(() => {
+        currentState.state = 'ACTIVE';
+        window.orbitAPI.setState('active');
+    }, expandDuration);
 }
 
 function closeMenu() {
-    currentState.state = 'IDLE';
-    currentState.levelStack = [];
-    currentState.cursorInBounds = false;
-    window.orbitAPI.setIgnoreMouse(true);
-    renderOrbit();
-    playSound('collapse');
+    if (currentState.state !== 'ACTIVE') return;
+    
+    window.orbitAPI.setState('collapsing');
+    currentState.state = 'COLLAPSING';
+    const menuContainer = document.getElementById('radial-menu');
+    const items = menuContainer.querySelectorAll('.menu-item');
+    
+    items.forEach((item, index) => {
+        setTimeout(() => item.classList.remove('visible'), index * 8);
+    });
+
+    setTimeout(() => {
+        menuContainer.classList.remove('active');
+        currentState.state = 'IDLE';
+        currentState.levelStack = [];
+        window.orbitAPI.setState('idle');
+    }, 250);
 }
 
 function resetToRoot() {
