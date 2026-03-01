@@ -9,6 +9,7 @@ let currentState = {
     themes: [],
     levelStack: [],
     state: 'IDLE',
+    currentContext: 'unknown',
     isEditMode: false,
     mouseX: 0,
     mouseY: 0,
@@ -19,6 +20,17 @@ let currentState = {
         visible: false,
         selectedAction: null,
         targetElement: null
+    },
+    palette: {
+        visible: false,
+        results: [],
+        selectedIndex: 0
+    },
+    gestures: {
+        startX: 0,
+        startY: 0,
+        startTime: 0,
+        tracking: false
     }
 };
 
@@ -51,6 +63,12 @@ async function init() {
         currentState.config = { ...currentState.config, ...newConfig };
         applyTheme(currentState.config.activeTheme);
         resetToRoot();
+    });
+
+    // Orbit 2.0 Context Updates
+    window.ipcRenderer?.on('context-update', (event, data) => {
+        currentState.currentContext = data.processName;
+        if (currentState.config.devMode) updateDebugOverlay();
     });
 
     window.orbitAPI.onThemesUpdated((newThemes) => {
@@ -142,16 +160,80 @@ async function init() {
     window.orbitAPI.onWindowShown((data) => {
         const { x, y } = data;
         currentState.radialCenter = { x, y };
+        currentState.gestures.startX = x;
+        currentState.gestures.startY = y;
+        currentState.gestures.startTime = Date.now();
+        currentState.gestures.tracking = true;
         expandMenu();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (currentState.gestures.tracking && currentState.state === 'EXPANDING') {
+            handleGesture(e.clientX, e.clientY);
+        }
+    });
+
+    function handleGesture(x, y) {
+        const dx = x - currentState.gestures.startX;
+        const dy = y - currentState.gestures.startY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const elapsed = Date.now() - currentState.gestures.startTime;
+
+        if (dist > 80 && elapsed < 250) {
+            // Fast swipe detected
+            currentState.gestures.tracking = false;
+            const angle = Math.atan2(dy, dx);
+            triggerSwipeAction(angle);
+        }
+    }
+
+    function triggerSwipeAction(angle) {
+        // Find closest item by angle
+        const items = document.querySelectorAll('.menu-item');
+        let closest = null;
+        let minDist = Infinity;
+
+        items.forEach(item => {
+            const ix = parseFloat(item.dataset.baseX);
+            const iy = parseFloat(item.dataset.baseY);
+            const iAngle = Math.atan2(iy, ix);
+            let diff = Math.abs(angle - iAngle);
+            if (diff > Math.PI) diff = 2 * Math.PI - diff;
+            
+            if (diff < minDist) {
+                minDist = diff;
+                closest = item;
+            }
+        });
+
+        if (closest && minDist < 0.6) {
+            closest.click();
+            logger.info('gesture_triggered', { angle: angle.toFixed(2) });
+        }
+    }
+
+    window.ipcRenderer?.on('ping-health', () => {
+        window.ipcRenderer.send('pong-health');
     });
 
     editModalOverlay.addEventListener('click', (e) => {
         if (e.target === editModalOverlay) closeModal();
     });
 
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && e.ctrlKey) {
+            e.preventDefault();
+            togglePalette();
+        }
+        if (currentState.palette.visible) {
+            handlePaletteKey(e);
+        }
+    });
+
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.icon-context-menu')) {
-            hideContextMenu();
+        if (!e.target.closest('.icon-context-menu') && !e.target.closest('.palette-container')) {
+             hideContextMenu();
+             if (currentState.palette.visible) hidePalette();
         }
     });
 
@@ -169,6 +251,7 @@ function updateDebugOverlay() {
     debugPanel.innerHTML = `
         <div class="debug-title">Orbit State Telemetry</div>
         <div class="debug-row"><span>State:</span> <b>${currentState.state}</b></div>
+        <div class="debug-row"><span>Context:</span> ${currentState.currentContext}</div>
         <div class="debug-row"><span>X:</span> ${currentState.mouseX}</div>
         <div class="debug-row"><span>Y:</span> ${currentState.mouseY}</div>
         <div class="debug-row"><span>InBounds:</span> ${currentState.cursorInBounds}</div>
@@ -243,6 +326,9 @@ function renderOrbit() {
         ? currentState.levelStack[currentState.levelStack.length - 1]
         : currentState.config.actions;
 
+    // Orbit 2.0: Contextual Action Overrides (Placeholder)
+    // If context == 'code', we could filter or prepend specific actions here.
+
     if (currentState.state === 'IDLE') {
         clearRadialPosition();
         updateCenterState();
@@ -262,6 +348,7 @@ function renderOrbit() {
     currentActions.forEach((action, index) => {
         const item = document.createElement('div');
         item.className = `menu-item${isNested ? ' nested-item' : ''}`;
+        item.dataset.action = JSON.stringify(action); // Store action data for later retrieval
 
         // Dynamic Icon
         const iconEl = createIcon(action);
@@ -494,6 +581,25 @@ function openModal() {
     window.orbitAPI.setIgnoreMouse(false);
 }
 
+function createMenuItem(action) {
+    const item = document.createElement('div');
+    item.className = `menu-item ${currentState.levelStack.length > 0 ? 'nested-item' : ''}`;
+    
+    const iconEl = createIcon(action);
+    item.appendChild(iconEl);
+
+    item.onmouseenter = () => {
+        if (currentState.config.showHoverLabels) showHoverLabel(action.label);
+    };
+    item.onmouseleave = () => hideHoverLabel();
+    item.onclick = (e) => { e.stopPropagation(); handleItemClick(action, item); };
+    item.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showContextMenu(action, e.clientX, e.clientY, item);
+    };
+    return item;
+}
 function closeModal() {
     currentState.isEditMode = false;
     editModalOverlay.classList.remove('active');
@@ -779,8 +885,96 @@ function nestActionIntoGroup(targetAction, groupName) {
     window.orbitAPI.updateConfig({ actions: newActions });
 }
 
-// ============================================
-// BOOT
-// ============================================
+function togglePalette() {
+    if (currentState.palette.visible) hidePalette();
+    else showPalette();
+}
+
+function showPalette() {
+    currentState.palette.visible = true;
+    const palette = document.getElementById('command-palette');
+    const input = document.getElementById('palette-search');
+    palette.classList.add('active');
+    input.value = '';
+    input.focus();
+    renderPaletteResults('');
+    window.orbitAPI.send('toggle-mouse', false);
+}
+
+function hidePalette() {
+    currentState.palette.visible = false;
+    document.getElementById('command-palette').classList.remove('active');
+    updateHitDetection(currentState.mouseX, currentState.mouseY);
+}
+
+function handlePaletteKey(e) {
+    if (e.key === 'Escape') hidePalette();
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        currentState.palette.selectedIndex = (currentState.palette.selectedIndex + 1) % currentState.palette.results.length;
+        renderPaletteResults(document.getElementById('palette-search').value);
+    }
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        currentState.palette.selectedIndex = (currentState.palette.selectedIndex - 1 + currentState.palette.results.length) % currentState.palette.results.length;
+        renderPaletteResults(document.getElementById('palette-search').value);
+    }
+    if (e.key === 'Enter') {
+        const selected = currentState.palette.results[currentState.palette.selectedIndex];
+        if (selected) {
+            handleItemClick(selected);
+            hidePalette();
+        }
+    }
+}
+
+document.getElementById('palette-search').addEventListener('input', (e) => {
+    currentState.palette.selectedIndex = 0;
+    renderPaletteResults(e.target.value);
+});
+
+async function renderPaletteResults(query) {
+    const resultsContainer = document.getElementById('palette-results');
+    
+    // Orbit 2.0 simple fuzzy match (Internal logic)
+    const allActions = flattenActions(currentState.config.actions);
+    const scored = allActions.map(a => ({
+        action: a,
+        score: scoreMatch(query, a.label)
+    })).filter(r => r.score > 0).sort((a,b) => b.score - a.score);
+
+    currentState.palette.results = scored.map(r => r.action);
+    resultsContainer.innerHTML = '';
+    
+    currentState.palette.results.slice(0, 10).forEach((action, idx) => {
+        const item = document.createElement('div');
+        item.className = `palette-item ${idx === currentState.palette.selectedIndex ? 'selected' : ''}`;
+        item.innerHTML = `
+            <div class="label">${action.label}</div>
+            <div style="opacity:0.4; font-size:12px">${action.type === 'group' ? '📁 Group' : '🚀 App'}</div>
+        `;
+        item.onclick = () => { handleItemClick(action); hidePalette(); };
+        resultsContainer.appendChild(item);
+    });
+}
+
+function flattenActions(actions) {
+    let flat = [];
+    actions.forEach(a => {
+        flat.push(a);
+        if (a.children) flat = flat.concat(flattenActions(a.children));
+    });
+    return flat;
+}
+
+function scoreMatch(query, target) {
+    if (!query) return 1;
+    query = query.toLowerCase();
+    target = target.toLowerCase();
+    if (target === query) return 100;
+    if (target.startsWith(query)) return 50;
+    if (target.includes(query)) return 10;
+    return 0; // Simple for now
+}
 
 init();

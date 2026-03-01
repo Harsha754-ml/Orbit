@@ -8,11 +8,17 @@ const orbitState = require('./lib/state');
 const { loadConfig, writeConfigSafe } = require('./lib/configLoader');
 const { executeApp } = require('./lib/executor');
 const { getCursorPositionScaled } = require('./lib/windowUtils');
+const contextEngine = require('./lib/contextEngine');
+const pluginLoader = require('./lib/pluginLoader');
 
 let mainWindow;
 let tray = null;
 let config = null;
 let rendererCrashCount = 0;
+let isReady = false;
+let lastTriggerTime = 0;
+let watchdogId = null;
+const TRIGGER_DEBOUNCE = 150; // ms
 
 // Global Error Boundaries
 process.on('uncaughtException', (err) => {
@@ -32,11 +38,37 @@ if (!gotTheLock) {
     if (mainWindow) showWindow();
   });
   app.whenReady().then(() => {
-    config = loadConfig(); // Load config early
+    config = loadConfig();
     createWindow();
     createTray();
+    contextEngine.start();
+    
+    // Initialize Plugin API Context
+    const pluginContext = {
+        config,
+        registerAction: (action) => {
+            config.actions.push(action);
+            if (mainWindow) mainWindow.webContents.send('config-updated', config);
+        },
+        onStateChange: (handler) => {
+            orbitState.on('modeChanged', handler);
+        }
+    };
+    pluginLoader.loadPlugins(pluginContext);
+
+    isReady = true;
+    logger.info('app_ready', { version: '2.0.0-elevated' });
   });
 }
+
+// Graceful Shutdown
+app.on('before-quit', () => {
+    logger.info('app_shutting_down');
+});
+
+process.on('SIGTERM', () => {
+    app.quit();
+});
 
 function createTray() {
   tray = new Tray(path.join(__dirname, 'assets', 'icon.png')); // Replace with your tray icon path
@@ -64,6 +96,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       preload: path.join(__dirname, 'preload.js')
     }
   });
@@ -74,6 +107,22 @@ function createWindow() {
 
   setupLifecycleGuards(mainWindow);
   setupIpcHandlers();
+  setupWatchdog(mainWindow);
+}
+
+function setupWatchdog(win) {
+  if (watchdogId) clearInterval(watchdogId);
+  
+  watchdogId = setInterval(() => {
+    if (!win || win.isDestroyed()) return;
+    
+    // Heartbeat check
+    win.webContents.send('ping-health');
+  }, 5000);
+
+  ipcMain.on('pong-health', () => {
+    // Healthy
+  });
 }
 
 function setupLifecycleGuards(win) {
@@ -96,7 +145,14 @@ function setupLifecycleGuards(win) {
 }
 
 function showWindow() {
-  if (orbitState.isLocked()) return; // Failsafe
+  if (!isReady || orbitState.isLocked()) return;
+
+  const now = Date.now();
+  if (now - lastTriggerTime < TRIGGER_DEBOUNCE) {
+      logger.debug('trigger_rate_limited');
+      return;
+  }
+  lastTriggerTime = now;
 
   const { x, y, display } = getCursorPositionScaled();
   orbitState.setCursor(x, y);
@@ -213,6 +269,23 @@ function launchTerminal() {
   });
 }
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+const orbitState = require('./lib/state');
+const contextEngine = require('./lib/contextEngine');
+
+contextEngine.on('context-changed', (data) => {
+    if (mainWindow) {
+        mainWindow.webContents.send('context-update', data);
+    }
+});
+
+// Hot Reloading
+fs.watchFile(path.join(process.cwd(), 'config.json'), () => {
+    logger.info('config_hot_reload_triggered');
+    config = loadConfig();
+    if (mainWindow) mainWindow.webContents.send('config-updated', config);
+});
+
+fs.watchFile(path.join(process.cwd(), 'themes.json'), () => {
+    logger.info('themes_hot_reload_triggered');
+    if (mainWindow) mainWindow.webContents.send('themes-updated');
 });

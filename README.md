@@ -1,48 +1,44 @@
-# <p align="center">🪐 Orbit Premium</p>
+# <p align="center">🪐 Orbit 2.0 — Anti-Gravity</p>
 
 <p align="center">
   <img src=".github/assets/orbit_banner.png" alt="Orbit Banner" width="800">
 </p>
 
 <p align="center">
-  <b>A high-performance, aesthetically-driven radial launcher for Windows 11.</b><br>
-  Built with Electron, Vanilla JS, and Liquid Glass CSS.
+  <b>A Contextual OS Augmentation Layer for Windows.</b><br>
+  Elevated with Intelligence, Hybrid Input, and Mission-Critical Safety.
 </p>
 
 ---
 
-## 🚀 Overview
+## 🚀 Orbit 2.0: The Elevation
 
-Orbit is a minimalist control hub designed to replace cluttered desktops and taskbars. It provides instant access to your tools through a responsive, state-aware radial menu that lives entirely in your muscle memory.
+Orbit 2.0 is not just a launcher; it's a **contextual intelligence hub**. It adapts to your workflow, learns your system state, and provides ultra-fast navigation via hybrid mouse/keyboard interaction.
 
-<p align="center">
-  <img src=".github/assets/orbit_radial_showcase.png" alt="Orbit Showcase" width="600">
-</p>
-
-### 🏗️ Architecture
+### 🏗️ 2.0 Architecture
 
 ```mermaid
 graph TD
-    Trigger[Trigger AHK] -->|Hotkey| Main[Main Process Electron]
-    Main -->|Validated Load| Config[Config Loader & FSM]
-    Main -->|Lifecycle Guards| Recovery[Renderer Recovery]
-    Config -->|Secure IPC| Preload[Secure Bridge]
-    Preload -->|FSM State| Renderer[Renderer JS]
-    Renderer -->|Telemetry| Debug[Debug Overlay]
+    Trigger[AHK / Ctrl+Space] -->|Input| Main[Main Process Electron]
+    Main -->|Context| CE[Context Engine]
+    CE -->|Override| Renderer[Renderer JS]
+    Main -->|Health Check| WD[Safe Watchdog]
+    Renderer -->|GPU Accel| UI[Adaptive Radial UI]
+    Main -->|Rotate| Logs[Structured JSON Logs]
 ```
 
 ---
 
-## ✨ Features
+## ✨ 2.0 Features
 
-- **🎯 Precision Centering**: Always launches exactly at your cursor position.
-- **🛡️ Hardened Stability**: Finite State Machine (FSM) prevents state desyncs and spam.
-- **🔒 Atomic Writes**: Config safety with `fsync` and temp-file strategies.
-- **📁 Nested Groups**: Organize unlimited apps and commands into logical orbits.
-- **🎨 Pro-Grade Themes**: Swappable HSL-tailored themes.
-- **🛠️ Dynamic Icon System**: Auto-generates sleek letter-glyphs if SVGs are missing.
-- **🚀 Secure Execution**: Whitelisted path resolution for apps and commands.
-- **� Real-time Telemetry**: Debug panel for live state and coordinate tracking.
+- **🧠 Contextual Intelligence**: Automatically adapts radial actions based on the active application (e.g., Browser vs VS Code).
+- **⚡ Command Palette**: Hybrid keyboard mode invoked via `Ctrl+Space` with fuzzy search.
+- **🎮 Gesture Recognition**: Fast-swipe during reveal for instant action triggering.
+- **🚀 GPU Optimized**: Animations powered by hardware-accelerated CSS layers (`will-change`).
+- **🛡️ Self-Healing Runtime**: background Watchdog and Heartbeat system for auto-recovery.
+- **🔒 Sandboxed Plugin API 2.0**: Secure, contract-based extension platform.
+- **📊 Structured Telemetry**: JSON-based logging with auto-rotation (5MB limit).
+- **🎯 Algorithmic Layout**: Dynamic icon scaling and angular collision avoidance for 5 to 50+ items.
 
 ---
 
@@ -61,42 +57,27 @@ npm install
 
 ### 3. Usage
 
-1. Run `orbit-trigger.ahk` to enable the system-wide hotkey.
-2. Press **Middle Mouse Button** (default) to summon the Orbit.
-3. **Double Click** center for settings; **Right Click** center for Icon Management.
-4. **Right Click** on icons to delete, nest, or move them.
+1. Run `orbit-trigger.ahk` for middle-click trigger.
+2. Press **Ctrl + Space** for the Command Palette.
+3. **Swipe** mouse fast during expand to trigger gestures.
+4. **Right Click** icons for the Icon Management suite.
 
 ---
 
-## ⚙️ Configuration
+## 🧠 Mission-Critical Engineering
 
-Customize Orbit via `config.json`:
+Orbit 2.0 is built for **Enterprise-Grade Stability**:
 
-| Property      | Description                   | Default     |
-| ------------- | ----------------------------- | ----------- |
-| `hotkey`      | Any valid AHK hotkey          | `MButton`   |
-| `radius`      | Distance from center          | `140`       |
-| `activeTheme` | Selected visual profile       | `Dark Neon` |
-| `devMode`     | Telemetry & State Overlay     | `false`     |
-| `appVersion`  | Internal migration versioning | `1.0.0`     |
-
----
-
-## 🧠 Core Engineering
-
-Orbit's architecture is built for mission-critical reliability:
-
-- **State Integrity**: A robust Finite State Machine (IDLE/EXPANDING/ACTIVE/COLLAPSING) ensures smooth transitions.
-- **Crash Recovery**: Renderer processes feature a 3-retry auto-reload guard with tray notifications.
-- **Data Safety**: Config is validated via `Ajv` schema and saved atomically with disk synchronization.
-- **Security**: Strict IPC whitelisting and whitelisted path resolution for all custom actions.
-- **Monitoring**: Persistent file logging (`orbit.log`) and baseline-relative memory tracking.
+- **Strict FSM**: Enforced state transitions (`idle -> expanding -> active -> collapsing`) reject illegal race conditions.
+- **Atomic Persistence**: Config migration and writes are fully atomic with `fsync` sync-to-disk.
+- **Performance Budget**: Real-time monitoring logs errors if reveal animations exceed **120ms**.
+- **Security**: Strict IPC whitelisting, BrowserWindow sandboxing, and whitelisted execution paths.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License. Developed with ❤️ for the Windows Enthusiast.
 
 ---
 

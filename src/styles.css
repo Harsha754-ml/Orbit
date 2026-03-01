@@ -187,7 +187,7 @@ body {
     cursor: pointer;
     pointer-events: auto;
     opacity: 0;
-    transform: scale(0.3);
+    transform: translate3d(0, 0, 0) scale(0.3);
     z-index: 150;
     box-shadow:
         0 0 15px var(--glow-idle),
@@ -197,11 +197,12 @@ body {
         box-shadow 0.22s var(--easing),
         opacity 0.22s var(--easing),
         border-color 0.15s var(--easing);
+    will-change: transform, opacity;
 }
 
 .menu-item.visible {
     opacity: 1;
-    transform: scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
 }
 
 .menu-item.nested-item {
@@ -599,6 +600,77 @@ body {
 
 .debug-row span {
     opacity: 0.7;
+}
+
+/* ============================================
+   COMMAND PALETTE
+   ============================================ */
+
+.palette-container {
+    position: fixed;
+    top: 25%;
+    left: 50%;
+    transform: translate(-50%, -20px);
+    width: 600px;
+    background: rgba(10, 10, 15, 0.9);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 255, 127, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    z-index: 4000;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+}
+
+.palette-container.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+}
+
+#palette-search {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid rgba(0, 255, 127, 0.3);
+    color: #fff;
+    font-size: 20px;
+    padding: 8px 0;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+}
+
+.palette-results {
+    margin-top: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.palette-item {
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.palette-item:hover, .palette-item.selected {
+    background: rgba(0, 255, 127, 0.1);
+}
+
+.palette-item img, .palette-item .glyph {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+}
+
+.palette-item .label {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 body.edit-mode .orbit-overlay {
