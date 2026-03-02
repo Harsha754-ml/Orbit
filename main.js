@@ -84,9 +84,14 @@ function createTray() {
 function createWindow() {
   config = loadConfig();
   
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.size;
+
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: width,
+    height: height,
+    x: 0,
+    y: 0,
     transparent: true,
     frame: false,
     hasShadow: false,
@@ -101,8 +106,8 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile('src/index.html');
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
+  mainWindow.loadFile(path.join(__dirname, 'src/index.html'));
   mainWindow.maximize();
 
   setupLifecycleGuards(mainWindow);

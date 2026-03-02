@@ -66,6 +66,54 @@ const iconContextMenu = document.getElementById('icon-context-menu');
 
 let animationFrame = null;
 let clickTimer = null;
+let isInitialized = false;
+let initPromise = null;
+
+
+// ============================================
+// IPC LISTENERS (Top-level for immediate response)
+// ============================================
+
+window.orbitAPI.onConfigUpdated((newConfig) => {
+    currentState.config = { ...currentState.config, ...newConfig };
+    applyTheme(currentState.config.activeTheme);
+    resetToRoot();
+});
+
+window.orbitAPI.onContextUpdate((data) => {
+    const oldContext = currentState.currentContext;
+    currentState.currentContext = data.processName;
+    if (oldContext !== data.processName) {
+        updateContextualActions();
+    }
+    if (currentState.config && currentState.config.devMode) updateDebugOverlay();
+});
+
+window.orbitAPI.onThemesUpdated((newThemes) => {
+    currentState.themes = newThemes;
+    if (currentState.config) applyTheme(currentState.config.activeTheme);
+    renderOrbit();
+});
+
+window.orbitAPI.onWindowShown(async (data) => {
+    if (!initPromise) initPromise = init();
+    await initPromise;
+
+    const { x, y } = data;
+    currentState.radialCenter = { x, y };
+    currentState.gestures.startX = x;
+    currentState.gestures.startY = y;
+    currentState.gestures.startTime = Date.now();
+    currentState.gestures.tracking = true;
+    
+    setRadialPosition(x, y);
+    resetToRoot();
+    expandMenu();
+});
+
+window.orbitAPI.onPingHealth(() => {
+    window.orbitAPI.send('pong-health');
+});
 
 // ============================================
 // INIT
@@ -77,43 +125,6 @@ async function init() {
 
     applyTheme(currentState.config.activeTheme);
     centerPiece.classList.add('idle');
-
-    // IPC
-    window.orbitAPI.onConfigUpdated((newConfig) => {
-        currentState.config = { ...currentState.config, ...newConfig };
-        applyTheme(currentState.config.activeTheme);
-        resetToRoot();
-    });
-
-    // Orbit 2.0 Context Updates
-    window.orbitAPI.onContextUpdate((data) => {
-        const oldContext = currentState.currentContext;
-        currentState.currentContext = data.processName;
-        if (oldContext !== data.processName) {
-            updateContextualActions();
-        }
-        if (currentState.config.devMode) updateDebugOverlay();
-    });
-
-    window.orbitAPI.onThemesUpdated((newThemes) => {
-        currentState.themes = newThemes;
-        applyTheme(currentState.config.activeTheme);
-        renderOrbit();
-    });
-
-    window.orbitAPI.onWindowShown((data) => {
-        // Consolidated Position Fix
-        const { x, y } = data;
-        currentState.radialCenter = { x, y };
-        currentState.gestures.startX = x;
-        currentState.gestures.startY = y;
-        currentState.gestures.startTime = Date.now();
-        currentState.gestures.tracking = true;
-        
-        setRadialPosition(x, y);
-        resetToRoot();
-        expandMenu();
-    });
 
     // ---- Events ----
 
@@ -232,9 +243,6 @@ async function init() {
         }
     }
 
-    window.orbitAPI.onPingHealth(() => {
-        window.orbitAPI.send('pong-health');
-    });
 
     editModalOverlay.addEventListener('click', (e) => {
         if (e.target === editModalOverlay) closeModal();
@@ -341,8 +349,11 @@ function renderOrbit() {
 
     const menuContainer = document.getElementById('radial-menu');
     const menuCenter = menuContainer.querySelector('.radial-menu-center');
-    // Clear only menu items, keep center piece
-    menuCenter.querySelectorAll('.menu-item').forEach(el => el.remove());
+    
+    // Surgical cleanup: Remove all menu-items but keep the center-piece wrapper
+    const items = menuCenter.querySelectorAll('.menu-item');
+    items.forEach(item => item.remove());
+    
     hideHoverLabel();
 
     const baseActions = currentState.levelStack.length > 0
@@ -793,10 +804,9 @@ function startParallaxLoop() {
         const px = currentState.parallax.x / 60;
         const py = currentState.parallax.y / 60;
 
-        // Center parallax
+        // Center parallax — relative to radialCenter (0,0)
         if (!currentState.isEditMode && currentState.state !== 'IDLE') {
-            centerPiece.style.left = `${cx + px}px`;
-            centerPiece.style.top = `${cy + py}px`;
+            centerPiece.style.transform = `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`;
         }
 
         // Item proximity scaling
@@ -1042,4 +1052,4 @@ function flattenActions(actions) {
     return flat;
 }
 
-init();
+initPromise = init();
