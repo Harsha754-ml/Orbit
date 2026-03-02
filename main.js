@@ -108,7 +108,6 @@ function createWindow() {
 
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
   mainWindow.loadFile(path.join(__dirname, 'src/index.html'));
-  mainWindow.maximize();
 
   setupLifecycleGuards(mainWindow);
   setupIpcHandlers();
@@ -155,24 +154,32 @@ function setupLifecycleGuards(win) {
 }
 
 function triggerReveal() {
-  if (!isReady || orbitState.isLocked()) return;
+  if (!isReady || orbitState.isLocked() || !mainWindow) return;
 
   const now = Date.now();
   if (now - lastTriggerTime < TRIGGER_DEBOUNCE) return;
   lastTriggerTime = now;
 
-  const { x, y } = getCursorPositionScaled();
-  orbitState.setCursor(x, y);
+  const point = screen.getCursorScreenPoint();
+  const display = screen.getDisplayNearestPoint(point);
+  
+  // Pivot window to the correct display
+  mainWindow.setBounds(display.bounds);
+  
+  // Calculate relative coordinates for the fullscreen window on that display
+  const relX = point.x - display.bounds.x;
+  const relY = point.y - display.bounds.y;
+
+  orbitState.setCursor(relX, relY);
   orbitState.setMode(orbitState.modes.EXPANDING);
 
-  // Always send updated position to renderer before showing
-  mainWindow.webContents.send('window-shown', { x, y });
+  // Send relative coords to renderer
+  mainWindow.webContents.send('window-shown', { x: relX, y: relY });
   
   if (!mainWindow.isVisible()) {
     mainWindow.show();
     mainWindow.focus();
   } else {
-    // If already visible (e.g. toggled while open), just reposition
     mainWindow.focus();
   }
 
