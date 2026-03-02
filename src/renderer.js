@@ -86,7 +86,7 @@ async function init() {
     });
 
     // Orbit 2.0 Context Updates
-    window.ipcRenderer?.on('context-update', (event, data) => {
+    window.orbitAPI.onContextUpdate((data) => {
         currentState.currentContext = data.processName;
         if (currentState.config.devMode) updateDebugOverlay();
     });
@@ -228,12 +228,12 @@ async function init() {
 
         if (closest && minDist < 0.6) {
             closest.click();
-            logger.info('gesture_triggered', { angle: angle.toFixed(2) });
+            window.orbitAPI.log('info', 'gesture_triggered', { angle: angle.toFixed(2) });
         }
     }
 
-    window.ipcRenderer?.on('ping-health', () => {
-        window.ipcRenderer.send('pong-health');
+    window.orbitAPI.onPingHealth(() => {
+        window.orbitAPI.send('pong-health');
     });
 
     editModalOverlay.addEventListener('click', (e) => {
@@ -527,6 +527,10 @@ function expandMenu() {
         item.appendChild(iconEl);
 
         // Position around radial center
+        const radius = currentState.levelStack.length > 0
+            ? (currentState.config.groupRadius || 75)
+            : (currentState.config.radius || 100);
+            
         const positions = computeLayout(actions.length, radius);
         const pos = positions[index];
 

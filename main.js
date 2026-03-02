@@ -177,7 +177,7 @@ function setupIpcHandlers() {
     }
   });
 
-  const allowedChannels = ['toggle-mouse', 'execute-action', 'update-config', 'set-state'];
+  const allowedChannels = ['toggle-mouse', 'execute-action', 'update-config', 'set-state', 'log'];
 
   ipcMain.on('orbit-api', (event, channel, data) => {
     if (!allowedChannels.includes(channel)) {
@@ -198,6 +198,9 @@ function setupIpcHandlers() {
         break;
       case 'set-state':
         orbitState.setMode(data.mode);
+        break;
+      case 'log':
+        logger[data.level || 'info'](`renderer_${data.msg}`, data.data || {});
         break;
     }
   });
