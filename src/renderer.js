@@ -393,10 +393,10 @@ function renderOrbit() {
         item.style.setProperty('--x', `${pos.x}px`);
         item.style.setProperty('--y', `${pos.y}px`);
         
-        item.style.left = '50%'; // Align to container center
-        item.style.top = '50%';
-        item.style.marginLeft = '-24px'; // Half of item-size
-        item.style.marginTop = '-24px';
+        // item.style.left = '50%'; // Align to container center
+        // item.style.top = '50%';
+        // item.style.marginLeft = '-24px'; // Half of item-size
+        // item.style.marginTop = '-24px';
 
         item.onmouseenter = () => {
             if (currentState.config.showHoverLabels) showHoverLabel(action.label);
@@ -414,7 +414,7 @@ function renderOrbit() {
             showContextMenu(action, e.clientX, e.clientY, item);
         };
 
-        menuContainer.appendChild(item);
+        menuCenter.appendChild(item);
         setTimeout(() => item.classList.add('visible'),
             index * 12 * (currentState.config.animationSpeed || 1.0));
     });
@@ -514,7 +514,8 @@ function expandMenu() {
     currentState.state = 'EXPANDING';
     const menuContainer = document.getElementById('radial-menu');
     const menuCenter = menuContainer.querySelector('.radial-menu-center');
-    menuCenter.innerHTML = '<div id="center-piece" class="center-piece idle"></div>';
+    // Clear only menu items, keep center piece
+    menuCenter.querySelectorAll('.menu-item').forEach(el => el.remove());
     
     // Position menu container at trigger point via CSS variables
     menuContainer.classList.add('active');
@@ -527,7 +528,7 @@ function expandMenu() {
     const actions = getVisibleActions();
     
     actions.forEach((action, index) => {
-        const item = document.createElement('div'); // Re-creating item here as createMenuItem is not defined in the prompt
+        const item = document.createElement('div');
         item.className = `menu-item${currentState.levelStack.length > 0 ? ' nested-item' : ''}`;
 
         // Dynamic Icon
@@ -548,10 +549,8 @@ function expandMenu() {
         item.style.setProperty('--x', `${pos.x}px`);
         item.style.setProperty('--y', `${pos.y}px`);
         
-        item.style.left = '50%';
-        item.style.top = '50%';
-        item.style.marginLeft = '-24px';
-        item.style.marginTop = '-24px';
+        item.style.left = '0';
+        item.style.top = '0';
 
         item.onmouseenter = () => {
             if (currentState.config.showHoverLabels) showHoverLabel(action.label);
@@ -569,7 +568,7 @@ function expandMenu() {
             showContextMenu(action, e.clientX, e.clientY, item);
         };
 
-        menuContainer.appendChild(item);
+        menuCenter.appendChild(item);
         
         setTimeout(() => item.classList.add('visible'), 
             index * 12 * (currentState.config.animationSpeed || 1.0));

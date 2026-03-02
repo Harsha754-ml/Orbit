@@ -82,30 +82,30 @@ body {
    ============================================ */
 
 .center-piece {
-  position: absolute;
-  left: var(--radial-x, 50%);
-  top: var(--radial-y, 50%);
-  transform: translate(-50%, -50%);
-  width: var(--center-size);
-  height: var(--center-size);
-  background: var(--bg-base);
-  backdrop-filter: blur(24px) saturate(180%);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-  z-index: 200;
-  pointer-events: auto;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow:
-    0 0 45px var(--glow-idle),
-    0 12px 40px rgba(0, 0, 0, 0.6),
-    inset 0 0 1px 1px rgba(255, 255, 255, 0.05);
-  transition:
-    box-shadow 0.3s var(--easing),
-    border-color 0.3s var(--easing),
-    transform 0.3s var(--easing);
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    width: var(--center-size);
+    height: var(--center-size);
+    background: var(--bg-base);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    z-index: 200;
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow:
+        0 0 45px var(--glow-idle),
+        0 12px 40px rgba(0, 0, 0, 0.6),
+        inset 0 0 1px 1px rgba(255, 255, 255, 0.05);
+    transition:
+        box-shadow 0.3s var(--easing),
+        border-color 0.3s var(--easing),
+        transform 0.3s var(--easing);
 }
 
 /* Ambient halo — soft radial glow */
@@ -211,40 +211,39 @@ body {
    ============================================ */
 
 .menu-item {
-  position: absolute;
-  width: var(--item-size);
-  height: var(--item-size);
-  background: var(--bg-base);
-  backdrop-filter: blur(16px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  pointer-events: auto;
-  opacity: 0;
-  --x: 0px;
-  --y: 0px;
-  --dx: 0px;
-  --dy: 0px;
-  --scale: 1;
-  transform: translate3d(
-      calc(var(--x) + var(--dx)),
-      calc(var(--y) + var(--dy)),
-      0
-    )
-    scale(0.2);
-  z-index: 150;
-  box-shadow:
-    0 0 18px var(--glow-idle),
-    0 6px 20px rgba(0, 0, 0, 0.45);
-  transition:
-    transform 0.28s var(--easing),
-    box-shadow 0.28s var(--easing),
-    opacity 0.28s var(--easing),
-    border-color 0.18s var(--easing);
-  will-change: transform, opacity;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--item-size);
+    height: var(--item-size);
+    background: var(--bg-base);
+    backdrop-filter: blur(16px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    pointer-events: auto;
+    opacity: 0;
+    margin-left: -24px;
+    margin-top: -24px;
+    --x: 0px;
+    --y: 0px;
+    --dx: 0px;
+    --dy: 0px;
+    --scale: 1;
+    transform: translate3d(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy)), 0) scale(0.2);
+    z-index: 150;
+    box-shadow:
+        0 0 18px var(--glow-idle),
+        0 6px 20px rgba(0, 0, 0, 0.45);
+    transition:
+        transform 0.28s var(--easing),
+        box-shadow 0.28s var(--easing),
+        opacity 0.28s var(--easing),
+        border-color 0.18s var(--easing);
+    will-change: transform, opacity;
 }
 
 .menu-item.visible {
