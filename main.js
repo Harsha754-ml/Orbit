@@ -108,6 +108,18 @@ function createWindow() {
   setupLifecycleGuards(mainWindow);
   setupIpcHandlers();
   setupWatchdog(mainWindow);
+
+  // Position radial menu at cursor whenever window is shown (even via AHK)
+  mainWindow.on('show', () => {
+    const { x, y } = getCursorPositionScaled();
+    orbitState.setCursor(x, y);
+    orbitState.setMode(orbitState.modes.EXPANDING);
+    mainWindow.webContents.send('window-shown', { x, y });
+    
+    // Reset crash count on successful show
+    rendererCrashCount = 0;
+    logger.info('window_triggered_at', { x, y });
+  });
 }
 
 function setupWatchdog(win) {
@@ -146,25 +158,8 @@ function setupLifecycleGuards(win) {
 
 function showWindow() {
   if (!isReady || orbitState.isLocked()) return;
-
-  const now = Date.now();
-  if (now - lastTriggerTime < TRIGGER_DEBOUNCE) {
-      logger.debug('trigger_rate_limited');
-      return;
-  }
-  lastTriggerTime = now;
-
-  const { x, y, display } = getCursorPositionScaled();
-  orbitState.setCursor(x, y);
-  orbitState.setMode(orbitState.modes.EXPANDING);
-
-  mainWindow.webContents.send('window-shown', { x, y });
-  
   mainWindow.show();
   mainWindow.focus();
-
-  // Reset crash count on successful show
-  rendererCrashCount = 0;
 }
 
 function setupIpcHandlers() {

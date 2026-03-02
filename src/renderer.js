@@ -30,6 +30,7 @@ let currentState = {
     levelStack: [],
     state: 'IDLE',
     currentContext: 'unknown',
+    contextualActions: null,
     isEditMode: false,
     mouseX: 0,
     mouseY: 0,
@@ -87,7 +88,11 @@ async function init() {
 
     // Orbit 2.0 Context Updates
     window.orbitAPI.onContextUpdate((data) => {
+        const oldContext = currentState.currentContext;
         currentState.currentContext = data.processName;
+        if (oldContext !== data.processName) {
+            updateContextualActions();
+        }
         if (currentState.config.devMode) updateDebugOverlay();
     });
 
@@ -342,9 +347,14 @@ function renderOrbit() {
     menuContainer.innerHTML = '';
     hideHoverLabel();
 
-    const currentActions = currentState.levelStack.length > 0
+    const baseActions = currentState.levelStack.length > 0
         ? currentState.levelStack[currentState.levelStack.length - 1]
         : currentState.config.actions;
+
+    // Apply Contextual Overrides
+    const currentActions = (currentState.levelStack.length === 0 && currentState.contextualActions)
+        ? [...currentState.contextualActions, ...baseActions]
+        : baseActions;
 
     // Orbit 2.0: Contextual Action Overrides (Placeholder)
     // If context == 'code', we could filter or prepend specific actions here.
@@ -990,23 +1000,49 @@ async function renderPaletteResults(query) {
     });
 }
 
+function updateContextualActions() {
+    if (!currentState.config) return;
+    
+    const context = (currentState.currentContext || '').toLowerCase();
+    const actions = [];
+    
+    // Premium Rule: Auto-inject context-specific actions
+    if (context.includes('code') || context.includes('visual')) {
+        actions.push({ label: 'Terminal', type: 'custom', path: 'cmd.exe', icon: 'terminal.svg' });
+        actions.push({ label: 'Format Document', type: 'cmd', cmd: 'echo formatting...' });
+    } else if (context.includes('chrome') || context.includes('browser') || context.includes('msedge')) {
+        actions.push({ label: 'New Tab', type: 'cmd', cmd: 'echo opening tab...' });
+        actions.push({ label: 'StackOverflow', type: 'custom', path: 'https://stackoverflow.com', icon: 'terminal.svg' });
+    }
+
+    currentState.contextualActions = actions.length > 0 ? actions : null;
+    if (currentState.state !== 'IDLE') renderOrbit();
+}
+
+function scoreMatch(query, target) {
+    if (!query) return 1;
+    const q = query.toLowerCase();
+    const t = target.toLowerCase();
+    if (t === q) return 100;
+    if (t.startsWith(q)) return 50;
+    
+    // Fuzzy match
+    let i = 0, j = 0;
+    while (i < q.length && j < t.length) {
+        if (q[i] === t[j]) i++;
+        j++;
+    }
+    return i === q.length ? 10 : 0;
+}
+
 function flattenActions(actions) {
+    if (!actions) return [];
     let flat = [];
     actions.forEach(a => {
         flat.push(a);
         if (a.children) flat = flat.concat(flattenActions(a.children));
     });
     return flat;
-}
-
-function scoreMatch(query, target) {
-    if (!query) return 1;
-    query = query.toLowerCase();
-    target = target.toLowerCase();
-    if (target === query) return 100;
-    if (target.startsWith(query)) return 50;
-    if (target.includes(query)) return 10;
-    return 0; // Simple for now
 }
 
 init();

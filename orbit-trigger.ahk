@@ -70,12 +70,16 @@ CheckTrigger(ThisHotkey) {
 }
 
 ToggleOrbit() {
-    if WinExist("ahk_exe orbit.exe") or WinExist("Orbit Premium") {
-        if WinActive("ahk_exe orbit.exe") or WinActive("Orbit Premium") {
-            WinHide()
+    Target := "ahk_exe orbit.exe"
+    if !WinExist(Target)
+        Target := "Orbit Premium"
+
+    if WinExist(Target) {
+        if WinActive(Target) {
+            WinHide(Target)
         } else {
-            WinShow()
-            WinActivate()
+            WinShow(Target)
+            WinActivate(Target)
         }
     } else {
         if FileExist("orbit.exe") {
