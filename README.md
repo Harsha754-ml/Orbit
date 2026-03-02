@@ -1,4 +1,4 @@
-# <p align="center">🪐 Orbit 2.0 — Anti-Gravity</p>
+# <p align="center">🪐 Orbit 2.0 </p>
 
 <p align="center">
   <img src=".github/assets/orbit_banner.png" alt="Orbit Banner" width="800">
