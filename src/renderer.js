@@ -30,7 +30,6 @@ let currentState = {
     levelStack: [],
     state: 'IDLE',
     currentContext: 'unknown',
-    contextualActions: null,
     isEditMode: false,
     mouseX: 0,
     mouseY: 0,
@@ -102,11 +101,16 @@ async function init() {
         renderOrbit();
     });
 
-    window.orbitAPI.onWindowShown((cursorPoint) => {
-        // Position radial at cursor
-        currentState.radialCenter.x = cursorPoint.x;
-        currentState.radialCenter.y = cursorPoint.y;
-        setRadialPosition(cursorPoint.x, cursorPoint.y);
+    window.orbitAPI.onWindowShown((data) => {
+        // Consolidated Position Fix
+        const { x, y } = data;
+        currentState.radialCenter = { x, y };
+        currentState.gestures.startX = x;
+        currentState.gestures.startY = y;
+        currentState.gestures.startTime = Date.now();
+        currentState.gestures.tracking = true;
+        
+        setRadialPosition(x, y);
         resetToRoot();
         expandMenu();
     });
@@ -182,15 +186,6 @@ async function init() {
         }
     });
 
-    window.orbitAPI.onWindowShown((data) => {
-        const { x, y } = data;
-        currentState.radialCenter = { x, y };
-        currentState.gestures.startX = x;
-        currentState.gestures.startY = y;
-        currentState.gestures.startTime = Date.now();
-        currentState.gestures.tracking = true;
-        expandMenu();
-    });
 
     window.addEventListener('mousemove', (e) => {
         if (currentState.gestures.tracking && currentState.state === 'EXPANDING') {
@@ -344,7 +339,9 @@ function clearRadialPosition() {
 function renderOrbit() {
     if (!currentState.config) return;
 
-    menuContainer.innerHTML = '';
+    const menuContainer = document.getElementById('radial-menu');
+    const menuCenter = menuContainer.querySelector('.radial-menu-center');
+    menuCenter.innerHTML = '<div id="center-piece" class="center-piece idle"></div>';
     hideHoverLabel();
 
     const baseActions = currentState.levelStack.length > 0
@@ -512,13 +509,13 @@ function toggleMenu() {
 
 function expandMenu() {
     window.orbitAPI.setState('expanding');
+    // Position menu container at trigger point
     currentState.state = 'EXPANDING';
     const menuContainer = document.getElementById('radial-menu');
-    menuContainer.innerHTML = '';
+    const menuCenter = menuContainer.querySelector('.radial-menu-center');
+    menuCenter.innerHTML = '<div id="center-piece" class="center-piece idle"></div>';
     
-    // Position menu container at trigger point
-    menuContainer.style.left = `${currentState.radialCenter.x}px`;
-    menuContainer.style.top = `${currentState.radialCenter.y}px`;
+    // Position menu container at trigger point via CSS variables
     menuContainer.classList.add('active');
 
     const getVisibleActions = () => { // Helper function to get actions
@@ -1000,49 +997,23 @@ async function renderPaletteResults(query) {
     });
 }
 
-function updateContextualActions() {
-    if (!currentState.config) return;
-    
-    const context = (currentState.currentContext || '').toLowerCase();
-    const actions = [];
-    
-    // Premium Rule: Auto-inject context-specific actions
-    if (context.includes('code') || context.includes('visual')) {
-        actions.push({ label: 'Terminal', type: 'custom', path: 'cmd.exe', icon: 'terminal.svg' });
-        actions.push({ label: 'Format Document', type: 'cmd', cmd: 'echo formatting...' });
-    } else if (context.includes('chrome') || context.includes('browser') || context.includes('msedge')) {
-        actions.push({ label: 'New Tab', type: 'cmd', cmd: 'echo opening tab...' });
-        actions.push({ label: 'StackOverflow', type: 'custom', path: 'https://stackoverflow.com', icon: 'terminal.svg' });
-    }
-
-    currentState.contextualActions = actions.length > 0 ? actions : null;
-    if (currentState.state !== 'IDLE') renderOrbit();
-}
-
-function scoreMatch(query, target) {
-    if (!query) return 1;
-    const q = query.toLowerCase();
-    const t = target.toLowerCase();
-    if (t === q) return 100;
-    if (t.startsWith(q)) return 50;
-    
-    // Fuzzy match
-    let i = 0, j = 0;
-    while (i < q.length && j < t.length) {
-        if (q[i] === t[j]) i++;
-        j++;
-    }
-    return i === q.length ? 10 : 0;
-}
-
 function flattenActions(actions) {
-    if (!actions) return [];
     let flat = [];
     actions.forEach(a => {
         flat.push(a);
         if (a.children) flat = flat.concat(flattenActions(a.children));
     });
     return flat;
+}
+
+function scoreMatch(query, target) {
+    if (!query) return 1;
+    query = query.toLowerCase();
+    target = target.toLowerCase();
+    if (target === query) return 100;
+    if (target.startsWith(query)) return 50;
+    if (target.includes(query)) return 10;
+    return 0; // Simple for now
 }
 
 init();

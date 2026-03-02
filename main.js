@@ -109,16 +109,9 @@ function createWindow() {
   setupIpcHandlers();
   setupWatchdog(mainWindow);
 
-  // Position radial menu at cursor whenever window is shown (even via AHK)
+  // Fallback / AHK direct show catcher
   mainWindow.on('show', () => {
-    const { x, y } = getCursorPositionScaled();
-    orbitState.setCursor(x, y);
-    orbitState.setMode(orbitState.modes.EXPANDING);
-    mainWindow.webContents.send('window-shown', { x, y });
-    
-    // Reset crash count on successful show
-    rendererCrashCount = 0;
-    logger.info('window_triggered_at', { x, y });
+    triggerReveal();
   });
 }
 
@@ -156,10 +149,33 @@ function setupLifecycleGuards(win) {
   });
 }
 
-function showWindow() {
+function triggerReveal() {
   if (!isReady || orbitState.isLocked()) return;
-  mainWindow.show();
-  mainWindow.focus();
+
+  const now = Date.now();
+  if (now - lastTriggerTime < TRIGGER_DEBOUNCE) return;
+  lastTriggerTime = now;
+
+  const { x, y } = getCursorPositionScaled();
+  orbitState.setCursor(x, y);
+  orbitState.setMode(orbitState.modes.EXPANDING);
+
+  // Always send updated position to renderer before showing
+  mainWindow.webContents.send('window-shown', { x, y });
+  
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+    mainWindow.focus();
+  } else {
+    // If already visible (e.g. toggled while open), just reposition
+    mainWindow.focus();
+  }
+
+  rendererCrashCount = 0;
+}
+
+function showWindow() {
+  triggerReveal();
 }
 
 function setupIpcHandlers() {

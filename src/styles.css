@@ -56,12 +56,25 @@ body {
    ============================================ */
 
 .radial-menu {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 150;
-  filter: drop-shadow(0 0 35px rgba(0, 191, 255, 0.3));
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 150;
+    opacity: 0;
+    transition: opacity 0.2s var(--easing);
+}
+
+.radial-menu.active {
+    opacity: 1;
+}
+
+.radial-menu-center {
+    position: absolute;
+    left: var(--radial-x, 50%);
+    top: var(--radial-y, 50%);
+    width: 0;
+    height: 0;
+    pointer-events: none;
 }
 
 /* ============================================
