@@ -7,19 +7,45 @@
  * Integrated Layout Engine Logics (from lib/layoutEngine.js)
  */
 function computeLayout(itemCount, baseRadius) {
-    const radius = itemCount <= 8 ? baseRadius : baseRadius + (itemCount - 8) * 8;
+    // Sync with layoutEngine.js multi-ring strategy
     const positions = [];
-    const angleStep = (2 * Math.PI) / itemCount;
     const rotationOffset = -Math.PI / 2;
+    const rings = [];
 
-    for (let i = 0; i < itemCount; i++) {
-        const angle = rotationOffset + (i * angleStep);
-        positions.push({
-            x: Math.cos(angle) * radius,
-            y: Math.sin(angle) * radius,
-            angle: angle
-        });
+    if (itemCount <= 8) {
+        rings.push({ count: itemCount, radius: baseRadius });
+    } else if (itemCount <= 18) {
+        const innerCount = Math.floor(itemCount * 0.4);
+        const outerCount = itemCount - innerCount;
+        rings.push({ count: innerCount, radius: baseRadius * 0.6 });
+        rings.push({ count: outerCount, radius: baseRadius + (outerCount - 8) * 4 });
+    } else {
+        const innerCount = Math.floor(itemCount * 0.2);
+        const midCount = Math.floor(itemCount * 0.35);
+        const outerCount = itemCount - innerCount - midCount;
+        rings.push({ count: innerCount, radius: baseRadius * 0.5 });
+        rings.push({ count: midCount, radius: baseRadius * 1.0 });
+        rings.push({ count: outerCount, radius: baseRadius * 1.6 });
     }
+
+    let processedItems = 0;
+    rings.forEach((ring, ringIdx) => {
+        const angleStep = (2 * Math.PI) / ring.count;
+        const ringOffset = rotationOffset + (ringIdx * (Math.PI / 8));
+
+        for (let i = 0; i < ring.count; i++) {
+            if (processedItems >= itemCount) break;
+            const angle = ringOffset + (i * angleStep);
+            positions.push({
+                x: Math.cos(angle) * ring.radius,
+                y: Math.sin(angle) * ring.radius,
+                angle: angle,
+                radius: ring.radius
+            });
+            processedItems++;
+        }
+    });
+
     return positions;
 }
 
@@ -298,15 +324,10 @@ function updateHitDetection(mx, my) {
         shouldIgnore = false;
     } else if (currentState.state !== 'IDLE') {
         // Active mode — check if cursor is within radial bounds
-        const cx = currentState.radialCenter.x;
-        const cy = currentState.radialCenter.y;
-        const radius = currentState.levelStack.length > 0
-            ? (currentState.config.groupRadius || 75)
-            : (currentState.config.radius || 100);
-        const hitRadius = radius + 60; // Extra padding for item hover
-
-        const dist = Math.hypot(mx - cx, my - cy);
-        const isInside = dist <= hitRadius;
+        const hitRadius = radius + 60;
+        const dx = mx - cx;
+        const dy = my - cy;
+        const isInside = (dx * dx + dy * dy) <= (hitRadius * hitRadius); // No Math.hypot for speed
 
         if (isInside) {
             shouldIgnore = false;
@@ -351,84 +372,52 @@ function renderOrbit() {
     const menuCenter = menuContainer.querySelector('.radial-menu-center');
     
     // Surgical cleanup: Remove all menu-items but keep the center-piece wrapper
-    const items = menuCenter.querySelectorAll('.menu-item');
-    items.forEach(item => item.remove());
+    const items = Array.from(menuCenter.querySelectorAll('.menu-item'));
     
-    hideHoverLabel();
-
-    const baseActions = currentState.levelStack.length > 0
-        ? currentState.levelStack[currentState.levelStack.length - 1]
-        : currentState.config.actions;
-
-    // Apply Contextual Overrides
-    const currentActions = (currentState.levelStack.length === 0 && currentState.contextualActions)
-        ? [...currentState.contextualActions, ...baseActions]
-        : baseActions;
-
-    // Orbit 2.0: Contextual Action Overrides (Placeholder)
-    // If context == 'code', we could filter or prepend specific actions here.
-
-    if (currentState.state === 'IDLE') {
-        clearRadialPosition();
-        updateCenterState();
-        updateDevOverlay();
-        return;
-    }
-
-    const count = currentActions.length;
-    const isNested = currentState.levelStack.length > 0;
-    const radius = isNested
-        ? (currentState.config.groupRadius || 75)
-        : (currentState.config.radius || 100);
-
-    const cx = currentState.radialCenter.x;
-    const cy = currentState.radialCenter.y;
-
     currentActions.forEach((action, index) => {
-        const item = document.createElement('div');
-        item.className = `menu-item${isNested ? ' nested-item' : ''}`;
-        item.dataset.action = JSON.stringify(action); // Store action data for later retrieval
+        let item = items[index];
+        if (!item) {
+            item = document.createElement('div');
+            menuCenter.appendChild(item);
+        }
+        
+        item.className = `menu-item${isNested ? ' nested-item' : ''}${item.className.includes('visible') ? ' visible' : ''}`;
+        item.dataset.action = JSON.stringify(action);
 
-        // Dynamic Icon
-        const iconEl = createIcon(action);
-        item.appendChild(iconEl);
+        // Update Icon (only if changed)
+        const iconKey = action.icon || action.label;
+        if (item.dataset.iconKey !== iconKey) {
+            item.innerHTML = '';
+            item.appendChild(createIcon(action));
+            item.dataset.iconKey = iconKey;
+        }
 
-        // Position around radial center
         const positions = computeLayout(currentActions.length, radius);
         const pos = positions[index];
 
         item.dataset.baseX = pos.x;
         item.dataset.baseY = pos.y;
-        
-        // Use CSS Variables for GPU-accelerated positioning
         item.style.setProperty('--x', `${pos.x}px`);
         item.style.setProperty('--y', `${pos.y}px`);
-        
-        // item.style.left = '50%'; // Align to container center
-        // item.style.top = '50%';
-        // item.style.marginLeft = '-24px'; // Half of item-size
-        // item.style.marginTop = '-24px';
 
-        item.onmouseenter = () => {
-            if (currentState.config.showHoverLabels) showHoverLabel(action.label);
-        };
+        item.onmouseenter = () => { if (currentState.config.showHoverLabels) showHoverLabel(action.label); };
         item.onmouseleave = () => hideHoverLabel();
-
-        item.onclick = (e) => {
-            e.stopPropagation();
-            handleItemClick(action, item);
-        };
-
+        item.onclick = (e) => { e.stopPropagation(); handleItemClick(action, item); };
         item.oncontextmenu = (e) => {
             e.preventDefault();
             e.stopPropagation();
             showContextMenu(action, e.clientX, e.clientY, item);
         };
 
-        menuCenter.appendChild(item);
-        setTimeout(() => item.classList.add('visible'),
-            index * 12 * (currentState.config.animationSpeed || 1.0));
+        if (!item.classList.contains('visible')) {
+            setTimeout(() => item.classList.add('visible'), index * 12 * (currentState.config.animationSpeed || 1.0));
+        }
     });
+
+    // Cleanup extra items
+    for (let i = currentActions.length; i < items.length; i++) {
+        items[i].remove();
+    }
 
     updateCenterState();
     updateDevOverlay();
@@ -817,12 +806,13 @@ function startParallaxLoop() {
                 const by = parseFloat(item.dataset.baseY);
                 const ix = cx + bx;
                 const iy = cy + by;
-                const dist = Math.hypot(currentState.mouseX - ix, currentState.mouseY - iy);
+                const distSq = dx * dx + dy * dy;
 
                 let scale = 1;
                 let offset = 0;
 
-                if (dist < 100) {
+                if (distSq < 10000) { // 100 * 100
+                    const dist = Math.sqrt(distSq); // Only sqrt if close enough
                     scale = 1 + (100 - dist) / 600;
                     offset = (100 - dist) / 50;
                 }

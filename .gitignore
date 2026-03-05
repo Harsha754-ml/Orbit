@@ -4,6 +4,7 @@ dist/
 build/
 *.exe
 *.log
+.antigravity
 
 # Project Files
 # (Cleaned up agents.md, instructions.md, skills.md)
