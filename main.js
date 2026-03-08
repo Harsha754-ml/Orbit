@@ -12,6 +12,7 @@ const contextEngine = require('./lib/contextEngine');
 const pluginLoader = require('./lib/pluginLoader');
 
 let mainWindow;
+let settingsWindow = null;
 let tray = null;
 let config = null;
 let rendererCrashCount = 0;
@@ -87,14 +88,40 @@ process.on('SIGTERM', () => {
 });
 
 function createTray() {
-  tray = new Tray(path.join(__dirname, 'assets', 'icon.png')); // Replace with your tray icon path
+  tray = new Tray(path.join(__dirname, 'assets', 'icon.png'));
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Show Orbit', click: () => showWindow() },
-    { label: 'Quit', click: () => app.quit() }
+    { label: 'Show Orbit',  click: () => showWindow() },
+    { label: 'Settings',    click: () => openSettingsWindow() },
+    { type: 'separator' },
+    { label: 'Quit',        click: () => app.quit() }
   ]);
   tray.setToolTip('Orbit Premium');
   tray.setContextMenu(contextMenu);
   tray.on('click', () => showWindow());
+}
+
+function openSettingsWindow() {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return;
+  }
+  settingsWindow = new BrowserWindow({
+    width: 980,
+    height: 680,
+    minWidth: 760,
+    minHeight: 500,
+    title: 'Orbit Settings',
+    backgroundColor: '#0d0d1a',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'settings-preload.js')
+    }
+  });
+  settingsWindow.setMenuBarVisibility(false);
+  settingsWindow.loadFile(path.join(__dirname, 'settings', 'index.html'));
+  settingsWindow.on('closed', () => { settingsWindow = null; });
 }
 
 function createWindow() {
@@ -208,6 +235,13 @@ function showWindow() {
 
 function setupIpcHandlers() {
   ipcMain.handle('get-config', () => config);
+  ipcMain.handle('save-config', (event, newCfg) => {
+    config = { ...config, ...newCfg };
+    writeConfigSafe(config);
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('config-updated', config);
+    if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('config-updated', config);
+    return config;
+  });
   ipcMain.handle('get-themes', () => {
     try {
       return JSON.parse(fs.readFileSync(path.join(__dirname, 'themes.json'), 'utf8'));

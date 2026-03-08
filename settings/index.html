@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orbit Settings</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-layout">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-glyph">⚡</span>
+        <div>
+          <div class="brand-name">Orbit</div>
+          <div class="brand-sub">Settings</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-page="dashboard">  <span>🏠</span> Dashboard</a>
+        <a class="nav-item"        data-page="actions">    <span>⚙️</span> Actions</a>
+        <a class="nav-item"        data-page="plugins">    <span>🔌</span> Plugins</a>
+        <a class="nav-item"        data-page="profiles">   <span>🎯</span> Context Profiles</a>
+        <a class="nav-item"        data-page="gestures">   <span>👆</span> Gestures</a>
+        <a class="nav-item"        data-page="themes">     <span>🎨</span> Themes</a>
+        <a class="nav-item"        data-page="general">    <span>🔧</span> General</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-hint">Changes auto-save</div>
+      </div>
+    </aside>
+
+    <!-- ── Main content ── -->
+    <main class="main-content">
+
+      <!-- DASHBOARD -->
+      <section id="page-dashboard" class="page active">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Overview of your Orbit configuration</p>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-actions">—</div>
+              <div class="stat-label">Actions</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🔌</div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-plugins">—</div>
+              <div class="stat-label">Plugins</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎨</div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-theme">—</div>
+              <div class="stat-label">Theme</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📐</div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-radius">—</div>
+              <div class="stat-label">Radius</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Quick Toggles</div>
+        <div class="toggle-grid" id="quick-toggles"></div>
+
+        <div class="section-title">Active Plugins</div>
+        <div id="dash-plugins" class="dash-plugin-list"></div>
+      </section>
+
+      <!-- ACTIONS -->
+      <section id="page-actions" class="page">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Radial Actions</h1>
+            <p class="page-subtitle">Everything shown in your radial menu</p>
+          </div>
+          <button class="btn-primary" id="btn-add-root">+ Add Action</button>
+        </div>
+        <div id="action-tree" class="action-tree"></div>
+      </section>
+
+      <!-- PLUGINS -->
+      <section id="page-plugins" class="page">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Plugins</h1>
+            <p class="page-subtitle">Extend Orbit with real-time data and extra features</p>
+          </div>
+          <button class="btn-secondary" id="btn-open-plugins-folder">📁 Open Folder</button>
+        </div>
+        <div id="plugin-cards" class="plugin-cards"></div>
+        <div class="info-box">
+          <strong>Installing plugins:</strong> Drop a <code>.js</code> plugin file into the
+          <em>plugins/</em> folder and restart Orbit. Plugins are loaded automatically on startup.
+        </div>
+      </section>
+
+      <!-- CONTEXT PROFILES -->
+      <section id="page-profiles" class="page">
+        <h1 class="page-title">Context Profiles</h1>
+        <p class="page-subtitle">
+          Actions that appear automatically when a specific app is in focus.
+          Profile actions are prepended to your main radial.
+        </p>
+        <div id="profile-tabs" class="profile-tabs"></div>
+        <div id="profile-content" class="profile-content"></div>
+        <button class="btn-secondary" style="margin-top:16px" id="btn-add-profile">+ Add Profile</button>
+      </section>
+
+      <!-- GESTURES -->
+      <section id="page-gestures" class="page">
+        <h1 class="page-title">Gesture Shortcuts</h1>
+        <p class="page-subtitle">
+          Assign an action to a fast directional swipe. Fires instantly without
+          navigating the radial rings.
+        </p>
+        <div class="gesture-compass">
+          <div class="gesture-row">
+            <div class="gesture-slot" id="gesture-up">
+              <div class="gesture-dir">↑ Up</div>
+              <div class="gesture-label" id="gesture-up-label">Not set</div>
+              <button class="btn-sm" onclick="editGesture('up')">Configure</button>
+            </div>
+          </div>
+          <div class="gesture-row gesture-middle">
+            <div class="gesture-slot" id="gesture-left">
+              <div class="gesture-dir">← Left</div>
+              <div class="gesture-label" id="gesture-left-label">Not set</div>
+              <button class="btn-sm" onclick="editGesture('left')">Configure</button>
+            </div>
+            <div class="gesture-center">
+              <div class="gesture-orbit-icon">⚡</div>
+              <div class="gesture-center-label">Orbit</div>
+            </div>
+            <div class="gesture-slot" id="gesture-right">
+              <div class="gesture-dir">Right →</div>
+              <div class="gesture-label" id="gesture-right-label">Not set</div>
+              <button class="btn-sm" onclick="editGesture('right')">Configure</button>
+            </div>
+          </div>
+          <div class="gesture-row">
+            <div class="gesture-slot" id="gesture-down">
+              <div class="gesture-dir">↓ Down</div>
+              <div class="gesture-label" id="gesture-down-label">Not set</div>
+              <button class="btn-sm" onclick="editGesture('down')">Configure</button>
+            </div>
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:24px">
+          Swipe faster than <strong>250ms</strong> over <strong>80px</strong> in any direction
+          to trigger a gesture shortcut.
+        </div>
+      </section>
+
+      <!-- THEMES -->
+      <section id="page-themes" class="page">
+        <h1 class="page-title">Themes</h1>
+        <p class="page-subtitle">Pick the visual style for your radial overlay</p>
+        <div id="theme-cards" class="theme-cards"></div>
+      </section>
+
+      <!-- GENERAL -->
+      <section id="page-general" class="page">
+        <h1 class="page-title">General</h1>
+        <p class="page-subtitle">Core behaviour and appearance settings</p>
+
+        <div class="settings-form">
+          <div class="form-section">
+            <div class="section-title">Radial Appearance</div>
+            <div class="form-row">
+              <label class="form-label">Primary Radius <span class="form-hint" id="lbl-radius">100px</span></label>
+              <input type="range" id="inp-radius" min="50" max="250" step="5" class="slider" />
+            </div>
+            <div class="form-row">
+              <label class="form-label">Group Radius <span class="form-hint" id="lbl-group-radius">75px</span></label>
+              <input type="range" id="inp-group-radius" min="40" max="180" step="5" class="slider" />
+            </div>
+            <div class="form-row">
+              <label class="form-label">Animation Speed <span class="form-hint" id="lbl-anim">1.0×</span></label>
+              <input type="range" id="inp-anim" min="0.3" max="3.0" step="0.1" class="slider" />
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">Behaviour</div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-name">Hover Labels</div>
+                <div class="toggle-desc">Show action name on hover</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="tog-labels"><span class="toggle-thumb"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-name">Sound Effects</div>
+                <div class="toggle-desc">Play sounds on expand/execute</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="tog-sound"><span class="toggle-thumb"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-name">Gesture Navigation</div>
+                <div class="toggle-desc">Enable fast-swipe shortcuts</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="tog-gesture"><span class="toggle-thumb"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-name">Developer Mode</div>
+                <div class="toggle-desc">Show debug telemetry overlay</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="tog-dev"><span class="toggle-thumb"></span></label>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">Hotkey</div>
+            <div class="form-row">
+              <label class="form-label">Trigger Key (AHK)</label>
+              <input type="text" id="inp-hotkey" class="form-input" placeholder="MButton" />
+              <div class="form-hint-block">The key configured in orbit-trigger.ahk. Edit that file to change the actual hotkey.</div>
+            </div>
+          </div>
+
+          <button class="btn-primary" id="btn-save-general">Save Changes</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── Action Edit Modal ── -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="modal-title">Add Action</span>
+        <button class="modal-close" id="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label class="form-label">Label *</label>
+          <input type="text" id="m-label" class="form-input" placeholder="e.g. VS Code" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Type *</label>
+          <select id="m-type" class="form-select">
+            <option value="cmd">cmd — Shell command</option>
+            <option value="command">command — System/UI command</option>
+            <option value="custom">custom — App / URL</option>
+            <option value="group">group — Folder (contains children)</option>
+          </select>
+        </div>
+        <div class="form-row" id="m-row-cmd">
+          <label class="form-label">Command</label>
+          <input type="text" id="m-cmd" class="form-input" placeholder="notepad.exe or powershell -Command ..." />
+        </div>
+        <div class="form-row" id="m-row-path">
+          <label class="form-label">Path / URL</label>
+          <input type="text" id="m-path" class="form-input" placeholder="C:\path\to\app.exe or https://..." />
+        </div>
+        <div class="form-row" id="m-row-uicmd">
+          <label class="form-label">UI Command</label>
+          <input type="text" id="m-uicmd" class="form-input" placeholder="ui:toggle-labels, theme:Dark Neon, ..." />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Icon filename</label>
+          <input type="text" id="m-icon" class="form-input" placeholder="terminal.svg" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="modal-cancel-btn">Cancel</button>
+        <button class="btn-primary"   id="modal-save-btn">Save Action</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Gesture Config Modal ── -->
+  <div id="gesture-modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="gesture-modal-title">Configure Gesture</span>
+        <button class="modal-close" id="gesture-modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px">
+          Assign a shell command that fires when you swipe in this direction.
+          Leave blank to disable.
+        </p>
+        <div class="form-row">
+          <label class="form-label">Label</label>
+          <input type="text" id="g-label" class="form-input" placeholder="e.g. VS Code" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Type</label>
+          <select id="g-type" class="form-select">
+            <option value="cmd">cmd — Shell command</option>
+            <option value="custom">custom — App / URL</option>
+          </select>
+        </div>
+        <div class="form-row" id="g-row-cmd">
+          <label class="form-label">Command</label>
+          <input type="text" id="g-cmd" class="form-input" placeholder="code.exe" />
+        </div>
+        <div class="form-row" id="g-row-path">
+          <label class="form-label">Path / URL</label>
+          <input type="text" id="g-path" class="form-input" placeholder="C:\app.exe" />
+        </div>
+        <button class="btn-danger" id="gesture-clear-btn" style="margin-top:4px">🗑 Clear shortcut</button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="gesture-cancel-btn">Cancel</button>
+        <button class="btn-primary"   id="gesture-save-btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
