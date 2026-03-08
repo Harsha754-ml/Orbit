@@ -1,6 +1,7 @@
 const { app, BrowserWindow, screen, ipcMain, shell, Tray, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 
 // Hardened lib modules
 const logger = require('./lib/logger');
@@ -14,6 +15,7 @@ const pluginLoader = require('./lib/pluginLoader');
 let mainWindow;
 let settingsWindow = null;
 let tray = null;
+let ahkProcess = null;
 let config = null;
 let rendererCrashCount = 0;
 let isReady = false;
@@ -73,6 +75,10 @@ if (!gotTheLock) {
         }
     }
 
+    // Launch the AHK trigger and register startup entries
+    launchAhkTrigger();
+    manageWindowsStartup();
+
     isReady = true;
     logger.info('app_ready', { version: '2.0.0-elevated' });
   });
@@ -80,6 +86,8 @@ if (!gotTheLock) {
 
 // Graceful Shutdown
 app.on('before-quit', () => {
+    app.isQuitting = true;
+    stopAhkTrigger();
     logger.info('app_shutting_down');
 });
 
@@ -87,13 +95,110 @@ process.on('SIGTERM', () => {
     app.quit();
 });
 
+// ── AutoHotkey trigger management ─────────────────────────────────────────────
+
+function resolveAhkRuntime() {
+  // 1. extraResources path — set by electron-builder at install time
+  const extraRes = path.join(process.resourcesPath || '', 'AutoHotkey64.exe');
+  if (fs.existsSync(extraRes)) return extraRes;
+
+  // 2. Bundled in assets/ during development
+  const dev = path.join(__dirname, 'assets', 'AutoHotkey64.exe');
+  if (fs.existsSync(dev)) return dev;
+
+  // 3. System-installed AHK v2
+  const systemPaths = [
+    'C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe',
+    'C:\\Program Files\\AutoHotkey\\AutoHotkey64.exe',
+    'C:\\Program Files (x86)\\AutoHotkey\\AutoHotkey64.exe',
+  ];
+  for (const p of systemPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 4. AHK on PATH
+  return 'AutoHotkey64.exe';
+}
+
+function resolveAhkScript() {
+  // Installed: script is in extraResources
+  const res = path.join(process.resourcesPath || '', 'orbit-trigger.ahk');
+  if (fs.existsSync(res)) return res;
+  // Dev fallback
+  return path.join(__dirname, 'orbit-trigger.ahk');
+}
+
+function launchAhkTrigger() {
+  if (ahkProcess && !ahkProcess.killed) return; // already running
+
+  const runtime = resolveAhkRuntime();
+  const script  = resolveAhkScript();
+
+  if (!fs.existsSync(script)) {
+    logger.warn('ahk_script_missing', { script });
+    return;
+  }
+
+  logger.info('ahk_launch', { runtime, script });
+  ahkProcess = spawn(runtime, [script], {
+    detached: false,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+
+  ahkProcess.on('error', (err) => {
+    logger.error('ahk_spawn_error', { error: err.message });
+    ahkProcess = null;
+  });
+
+  ahkProcess.on('exit', (code) => {
+    logger.info('ahk_exit', { code });
+    ahkProcess = null;
+    // Auto-restart unless Orbit itself is quitting
+    if (!app.isQuitting) {
+      setTimeout(launchAhkTrigger, 2000);
+    }
+  });
+}
+
+function stopAhkTrigger() {
+  if (ahkProcess && !ahkProcess.killed) {
+    ahkProcess.kill();
+    ahkProcess = null;
+  }
+}
+
+function manageWindowsStartup() {
+  // Add Orbit + the AHK trigger to HKCU Run so they start on login
+  try {
+    const { execSync } = require('child_process');
+    const exePath   = process.execPath;
+    const ahkExe    = resolveAhkRuntime();
+    const ahkScript = resolveAhkScript();
+
+    // Register Orbit itself
+    execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Orbit" /t REG_SZ /d "${exePath}" /f`, { windowsHide: true });
+
+    // Register the AHK trigger (only if we have a real path)
+    if (fs.existsSync(ahkExe) && fs.existsSync(ahkScript)) {
+      execSync(`reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "OrbitTrigger" /t REG_SZ /d "\\"${ahkExe}\\" \\"${ahkScript}\\"" /f`, { windowsHide: true });
+    }
+
+    logger.info('startup_registered');
+  } catch (e) {
+    logger.warn('startup_register_failed', { error: e.message });
+  }
+}
+
 function createTray() {
   tray = new Tray(path.join(__dirname, 'assets', 'icon.png'));
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Show Orbit',  click: () => showWindow() },
-    { label: 'Settings',    click: () => openSettingsWindow() },
+    { label: 'Show Orbit',           click: () => showWindow() },
+    { label: 'Settings',             click: () => openSettingsWindow() },
     { type: 'separator' },
-    { label: 'Quit',        click: () => app.quit() }
+    { label: 'Restart AHK Trigger',  click: () => { stopAhkTrigger(); launchAhkTrigger(); } },
+    { type: 'separator' },
+    { label: 'Quit',                 click: () => app.quit() }
   ]);
   tray.setToolTip('Orbit Premium');
   tray.setContextMenu(contextMenu);

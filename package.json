@@ -23,7 +23,8 @@
     "asar": true,
     "asarUnpack": [
       "plugins/**/*",
-      "assets/**/*"
+      "assets/**/*",
+      "orbit-trigger.ahk"
     ],
     "files": [
       "main.js",
@@ -46,6 +47,10 @@
       {
         "from": "orbit-trigger.ahk",
         "to": "orbit-trigger.ahk"
+      },
+      {
+        "from": "assets/AutoHotkey64.exe",
+        "to": "AutoHotkey64.exe"
       }
     ],
     "win": {
