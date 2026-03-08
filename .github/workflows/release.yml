@@ -1,0 +1,89 @@
+name: Build & Release
+
+# ─────────────────────────────────────────────────────────────
+# Triggers:
+#   • Push a tag like  v2.1.0  → full build + GitHub Release
+#   • Push to main    → build only (no release), checks nothing is broken
+# ─────────────────────────────────────────────────────────────
+on:
+  push:
+    tags:
+      - 'v*.*.*'          # e.g. v2.1.0, v3.0.0-beta
+    branches:
+      - main              # build-check on every main push (no release)
+
+jobs:
+  build:
+    runs-on: windows-latest   # Must be Windows — Electron NSIS requires it
+
+    permissions:
+      contents: write         # Needed to create releases and upload assets
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Node.js ───────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ── 3. Install dependencies ───────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 4. Download bundled AHK runtime ──────────────────────
+      # (AutoHotkey64.exe is gitignored — we fetch it fresh each build)
+      - name: Download AutoHotkey v2 runtime
+        shell: pwsh
+        run: |
+          $url = "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.19/AutoHotkey_2.0.19.zip"
+          Invoke-WebRequest -Uri $url -OutFile ahk.zip
+          Expand-Archive -Path ahk.zip -DestinationPath ahk_extracted -Force
+          New-Item -ItemType Directory -Force -Path assets | Out-Null
+          Copy-Item ahk_extracted/AutoHotkey64.exe assets/AutoHotkey64.exe
+          Remove-Item ahk.zip, ahk_extracted -Recurse -Force
+          Write-Host "AHK runtime ready: $(Get-Item assets/AutoHotkey64.exe | Select-Object -ExpandProperty Length) bytes"
+
+      # ── 5. Build ──────────────────────────────────────────────
+      - name: Build installer + portable
+        run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 6. List build output ──────────────────────────────────
+      - name: Show dist contents
+        run: Get-ChildItem dist/ | Select-Object Name, Length
+        shell: pwsh
+
+      # ── 7. Create GitHub Release (only on tag push) ───────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Orbit ${{ github.ref_name }}"
+          body: |
+            ## 🪐 Orbit ${{ github.ref_name }}
+
+            ### Downloads
+            | File | Description |
+            |------|-------------|
+            | `Orbit-*-Setup-x64.exe` | **Recommended** — NSIS one-click installer |
+            | `Orbit-*-Portable-x64.exe` | No install needed — run anywhere |
+
+            > **Requirements:** Windows 10/11 x64 · No AutoHotkey installation needed (bundled)
+
+            ---
+            See [CHANGELOG](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for what changed.
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          files: |
+            dist/Orbit-*-win-x64.exe
+            dist/Orbit-*-portable.exe
+            dist/Orbit-*-win-x64.exe.blockmap
+            dist/latest.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
