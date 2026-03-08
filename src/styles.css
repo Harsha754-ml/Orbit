@@ -1096,3 +1096,51 @@ body.edit-mode .orbit-overlay {
   color: rgba(255, 255, 255, 0.25);
   line-height: 1.4;
 }
+
+/* ============================================
+   SCRIPT RUNNER WIDGET
+   ============================================ */
+
+.script-runner-label {
+  padding: 6px 14px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.script-runner-output {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px 14px 10px;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.65);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+
+.script-line { white-space: pre-wrap; word-break: break-all; }
+.script-err  { color: #ff6666; }
+.script-ok   { color: #44ff88; }
+
+/* ============================================
+   FOCUS MODE WIDGET
+   ============================================ */
+
+.focus-status {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 10px 0 6px;
+  transition: color 0.3s ease;
+}
+.focus-status.active   { color: #ff4444; }
+.focus-status.inactive { color: rgba(255,255,255,0.35); }
+
+.focus-blocklist {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  padding-bottom: 8px;
+}

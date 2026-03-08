@@ -150,6 +150,34 @@
         <div id="notes-body" class="notes-body"></div>
       </div>
 
+      <div id="widget-app-switcher" class="plugin-widget hidden">
+        <div class="widget-header">
+          <span class="widget-icon">🪟</span>Open Windows
+          <button class="widget-close" onclick="toggleWidget('app-switcher')">×</button>
+        </div>
+        <div id="app-switcher-list" class="clipboard-list"></div>
+      </div>
+
+      <div id="widget-script-runner" class="plugin-widget hidden">
+        <div class="widget-header">
+          <span class="widget-icon">⚡</span>Script Output
+          <button class="widget-close" onclick="toggleWidget('script-runner')">×</button>
+        </div>
+        <div id="script-runner-label" class="script-runner-label"></div>
+        <div id="script-runner-output" class="script-runner-output"></div>
+      </div>
+
+      <div id="widget-focus-mode" class="plugin-widget hidden">
+        <div class="widget-header">
+          <span class="widget-icon">🎯</span>Focus Mode
+          <button class="widget-close" onclick="toggleWidget('focus-mode')">×</button>
+        </div>
+        <div class="widget-body center">
+          <div id="focus-mode-status" class="focus-status inactive">● Inactive</div>
+          <div id="focus-mode-blocklist" class="focus-blocklist"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Plugin Management Panel -->

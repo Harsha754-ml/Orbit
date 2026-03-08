@@ -230,11 +230,31 @@ async function init() {
         const elapsed = Date.now() - currentState.gestures.startTime;
 
         if (dist > 80 && elapsed < 250) {
-            // Fast swipe detected
             currentState.gestures.tracking = false;
             const angle = Math.atan2(dy, dx);
+            // Check configured gesture shortcuts first
+            if (tryGestureShortcut(angle)) return;
             triggerSwipeAction(angle);
         }
+    }
+
+    function tryGestureShortcut(angle) {
+        const shortcuts = currentState.config && currentState.config.gestureShortcuts;
+        if (!shortcuts) return false;
+        // Map angle to cardinal direction
+        let dir;
+        if      (angle > -Math.PI / 4  && angle <= Math.PI / 4)  dir = 'right';
+        else if (angle > Math.PI / 4   && angle <= 3*Math.PI/4)  dir = 'down';
+        else if (angle > -3*Math.PI/4  && angle <= -Math.PI / 4) dir = 'up';
+        else                                                        dir = 'left';
+        const action = shortcuts[dir];
+        if (action) {
+            window.orbitAPI.executeAction(action);
+            closeMenu();
+            window.orbitAPI.log('info', 'gesture_shortcut', { dir });
+            return true;
+        }
+        return false;
     }
 
     function triggerSwipeAction(angle) {
@@ -367,13 +387,11 @@ function clearRadialPosition() {
 function renderOrbit() {
     if (!currentState.config) return;
 
-    const currentActions = currentState.levelStack.length > 0
-        ? currentState.levelStack[currentState.levelStack.length - 1]
-        : (currentState.config.actions || []);
-    const radius = currentState.levelStack.length > 0
+    const currentActions = getVisibleActions();
+    const isNested = currentState.levelStack.length > 0;
+    const radius = isNested
         ? (currentState.config.groupRadius || 75)
         : (currentState.config.radius || 100);
-    const isNested = currentState.levelStack.length > 0;
 
     const menuContainer = document.getElementById('radial-menu');
     const menuCenter = menuContainer.querySelector('.radial-menu-center');
@@ -527,6 +545,25 @@ function handleUICommand(cmd) {
 // NAVIGATION
 // ============================================
 
+// Returns the correct actions for the current level + context profile
+function getVisibleActions() {
+    if (currentState.levelStack.length > 0) {
+        return currentState.levelStack[currentState.levelStack.length - 1];
+    }
+    const base = currentState.config.actions || [];
+    // Inject context-profile actions at the front when a profile matches
+    const profiles = currentState.config.contextProfiles;
+    if (profiles && currentState.currentContext) {
+        const ctx = currentState.currentContext.toLowerCase();
+        for (const [key, profileActions] of Object.entries(profiles)) {
+            if (ctx.includes(key.toLowerCase()) && Array.isArray(profileActions) && profileActions.length > 0) {
+                return [...profileActions, ...base];
+            }
+        }
+    }
+    return base;
+}
+
 function enterGroup(children) {
     currentState.levelStack.push(children);
     renderOrbit();
@@ -563,11 +600,6 @@ function expandMenu() {
     // Position menu container at trigger point via CSS variables
     menuContainer.classList.add('active');
 
-    const getVisibleActions = () => { // Helper function to get actions
-        return currentState.levelStack.length > 0
-            ? currentState.levelStack[currentState.levelStack.length - 1]
-            : currentState.config.actions;
-    };
     const actions = getVisibleActions();
     
     actions.forEach((action, index) => {
@@ -1043,21 +1075,8 @@ async function renderPaletteResults(query) {
 }
 
 function updateContextualActions() {
-    if (!currentState.config) return;
-    
-    const context = (currentState.currentContext || '').toLowerCase();
-    const actions = [];
-    
-    // Premium Rule: Auto-inject context-specific actions
-    if (context.includes('code') || context.includes('visual')) {
-        actions.push({ label: 'Terminal', type: 'custom', path: 'cmd.exe', icon: 'terminal.svg' });
-        actions.push({ label: 'Format Document', type: 'cmd', cmd: 'echo formatting...' });
-    } else if (context.includes('chrome') || context.includes('browser') || context.includes('msedge')) {
-        actions.push({ label: 'New Tab', type: 'cmd', cmd: 'echo opening tab...' });
-        actions.push({ label: 'StackOverflow', type: 'custom', path: 'https://stackoverflow.com', icon: 'terminal.svg' });
-    }
-
-    currentState.contextualActions = actions.length > 0 ? actions : null;
+    // Context-aware actions are now handled by getVisibleActions() via config.contextProfiles.
+    // Re-render the orbit if it's currently open so profile actions appear immediately.
     if (currentState.state !== 'IDLE') renderOrbit();
 }
 
@@ -1093,12 +1112,16 @@ function flattenActions(actions) {
 
 function handlePluginBroadcast({ plugin, channel, data }) {
     switch (channel) {
-        case 'sysmon-update':    updateSysMonWidget(data);    break;
-        case 'pomodoro-update':  updatePomodoroWidget(data);  break;
-        case 'weather-update':   updateWeatherWidget(data);   break;
-        case 'clipboard-update': updateClipboardWidget(data); break;
-        case 'notes-update':     updateNotesWidget(data);     break;
-        case 'media-update':     updateMediaWidget(data);     break;
+        case 'sysmon-update':         updateSysMonWidget(data);      break;
+        case 'pomodoro-update':       updatePomodoroWidget(data);    break;
+        case 'weather-update':        updateWeatherWidget(data);     break;
+        case 'clipboard-update':      updateClipboardWidget(data);   break;
+        case 'notes-update':          updateNotesWidget(data);       break;
+        case 'media-update':          updateMediaWidget(data);       break;
+        case 'app-switcher-update':   updateAppSwitcherWidget(data); break;
+        case 'script-output':         updateScriptRunnerWidget(data);break;
+        case 'focus-mode-update':     updateFocusModeWidget(data);   break;
+        case 'recent-files-update':   break; // handled server-side via group children
     }
 }
 
@@ -1201,6 +1224,55 @@ function updateMediaWidget(data) {
             overlay.textContent += `  |  🎵 ${data.title}`;
         }
     }
+}
+
+// --- App Switcher ---
+function updateAppSwitcherWidget(data) {
+    const list = document.getElementById('app-switcher-list');
+    if (!list) return;
+    list.innerHTML = '';
+    (data.windows || []).forEach(win => {
+        const item = document.createElement('div');
+        item.className = 'clipboard-item';
+        const title = win.title.length > 48 ? win.title.slice(0, 48) + '…' : win.title;
+        item.textContent = title;
+        item.title = `${win.name} (PID ${win.pid})`;
+        item.onclick = () => {
+            window.orbitAPI.sendPluginCommand('plugin-app-switcher-app-switcher-focus', { pid: win.pid });
+        };
+        list.appendChild(item);
+    });
+    if ((data.windows || []).length === 0) {
+        list.innerHTML = '<div style="padding:10px 14px;color:rgba(255,255,255,0.3);font-size:12px">No open windows found</div>';
+    }
+}
+
+// --- Script Runner ---
+function updateScriptRunnerWidget(data) {
+    const label  = document.getElementById('script-runner-label');
+    const output = document.getElementById('script-runner-output');
+    if (!output) return;
+    if (label) {
+        label.textContent = data.running ? `▶ ${data.label}` : `✓ ${data.label}`;
+        label.style.color  = data.running ? 'var(--accent)' : '#44ff88';
+    }
+    output.innerHTML = (data.lines || [])
+        .map(l => `<div class="script-line ${l.startsWith('⚠') ? 'script-err' : l.startsWith('✓') ? 'script-ok' : ''}">${l.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`)
+        .join('');
+    output.scrollTop = output.scrollHeight;
+    // Auto-open widget when a script starts
+    const widget = document.getElementById('widget-script-runner');
+    if (widget && widget.classList.contains('hidden')) widget.classList.remove('hidden');
+}
+
+// --- Focus Mode ---
+function updateFocusModeWidget(data) {
+    const statusEl  = document.getElementById('focus-mode-status');
+    const blockEl   = document.getElementById('focus-mode-blocklist');
+    if (!statusEl) return;
+    statusEl.textContent = data.active ? '🔴 Active' : '● Inactive';
+    statusEl.className   = `focus-status ${data.active ? 'active' : 'inactive'}`;
+    if (blockEl) blockEl.textContent = `Blocking: ${(data.blocklist || []).join(', ')}`;
 }
 
 // ============================================

@@ -11,32 +11,46 @@
   "showHoverLabels": true,
   "requireCtrlInBrowsers": true,
   "restrictToDesktop": true,
-  "browserList": [
-    "chrome.exe",
-    "msedge.exe",
-    "firefox.exe"
-  ],
+  "browserList": ["chrome.exe", "msedge.exe", "firefox.exe"],
+
+  "contextProfiles": {
+    "code": [
+      { "type": "cmd", "label": "New Terminal",         "icon": "terminal.svg", "cmd": "wt.exe" },
+      { "type": "cmd", "label": "Git Status",           "icon": "code.svg",     "cmd": "powershell -NoProfile -Command \"git status | Out-GridView -Title 'Git Status'\"" },
+      { "type": "cmd", "label": "Git Push",             "icon": "code.svg",     "cmd": "powershell -NoProfile -Command \"git push\"" },
+      { "type": "cmd", "label": "Format (Alt+Shift+F)", "icon": "label.svg",    "cmd": "powershell -NoProfile -WindowStyle Hidden -Command \"Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('%+F')\"" }
+    ],
+    "chrome": [
+      { "type": "cmd", "label": "New Tab",   "icon": "web.svg",  "cmd": "powershell -NoProfile -WindowStyle Hidden -Command \"Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^t')\"" },
+      { "type": "cmd", "label": "Dev Tools", "icon": "code.svg", "cmd": "powershell -NoProfile -WindowStyle Hidden -Command \"Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{F12}')\"" },
+      { "type": "cmd", "label": "Incognito", "icon": "web.svg",  "cmd": "powershell -NoProfile -WindowStyle Hidden -Command \"Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^+n')\"" }
+    ],
+    "msedge": [
+      { "type": "cmd", "label": "New Tab",   "icon": "web.svg",  "cmd": "powershell -NoProfile -WindowStyle Hidden -Command \"Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^t')\"" },
+      { "type": "cmd", "label": "Dev Tools", "icon": "code.svg", "cmd": "powershell -NoProfile -WindowStyle Hidden -Command \"Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('{F12}')\"" }
+    ],
+    "explorer": [
+      { "type": "cmd", "label": "Terminal Here", "icon": "terminal.svg", "cmd": "wt.exe -d ." },
+      { "type": "cmd", "label": "New Folder",    "icon": "label.svg",    "cmd": "powershell -NoProfile -WindowStyle Hidden -Command \"Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^+n')\"" }
+    ]
+  },
+
+  "gestureShortcuts": {
+    "up":    null,
+    "down":  null,
+    "left":  null,
+    "right": null
+  },
+
   "actions": [
+    { "type": "command", "label": "VS Code",  "icon": "vscode.svg",   "command": "auto-detect" },
+    { "type": "command", "label": "Terminal", "icon": "terminal.svg", "command": "auto-detect" },
     {
-      "type": "command",
-      "label": "VS Code",
-      "icon": "vscode.svg",
-      "command": "auto-detect"
-    },
-    {
-      "type": "command",
-      "label": "Terminal",
-      "icon": "terminal.svg",
-      "command": "auto-detect"
-    },
-    {
-      "type": "group",
-      "label": "Settings",
-      "icon": "settings.svg",
+      "type": "group", "label": "Settings", "icon": "settings.svg",
       "children": [
-        { "type": "command", "label": "Toggle Labels", "icon": "label.svg", "command": "ui:toggle-labels" },
-        { "type": "command", "label": "Toggle Sound", "icon": "sound.svg", "command": "ui:toggle-sound" },
-        { "type": "command", "label": "Toggle DevMode", "icon": "code.svg", "command": "ui:toggle-dev" }
+        { "type": "command", "label": "Toggle Labels",  "icon": "label.svg", "command": "ui:toggle-labels" },
+        { "type": "command", "label": "Toggle Sound",   "icon": "sound.svg", "command": "ui:toggle-sound"  },
+        { "type": "command", "label": "Toggle DevMode", "icon": "code.svg",  "command": "ui:toggle-dev"    }
       ]
     }
   ]
