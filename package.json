@@ -1,13 +1,15 @@
 {
   "name": "orbit",
-  "version": "1.0.0",
-  "description": "Radial Launcher for Windows 11",
+  "version": "2.0.0",
+  "description": "Contextual radial launcher and OS augmentation layer for Windows",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "dist": "electron-builder --win nsis portable"
   },
-  "author": "Orbit Team",
+  "author": "Harsha754-ml",
   "license": "MIT",
   "devDependencies": {
     "electron": "^40.6.1",
@@ -15,18 +17,70 @@
   },
   "build": {
     "appId": "com.orbit.radial",
+    "productName": "Orbit",
+    "copyright": "Copyright © 2025 Harsha754-ml",
+    "icon": "assets/icon.ico",
+    "asar": true,
+    "asarUnpack": [
+      "plugins/**/*",
+      "assets/**/*"
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "settings-preload.js",
+      "defaultConfig.json",
+      "themes.json",
+      "orbit-trigger.ahk",
+      "src/**/*",
+      "settings/**/*",
+      "lib/**/*",
+      "plugins/**/*",
+      "assets/**/*",
+      "!plugins/data/**/*",
+      "!node_modules/**/*.md",
+      "!node_modules/**/*.ts",
+      "!**/.git/**"
+    ],
+    "extraResources": [
+      {
+        "from": "orbit-trigger.ahk",
+        "to": "orbit-trigger.ahk"
+      }
+    ],
     "win": {
-      "target": "nsis",
-      "requestedExecutionLevel": "asInvoker"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker",
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Orbit"
+    },
+    "portable": {
+      "artifactName": "Orbit-${version}-portable.exe"
     },
     "directories": {
-      "output": "dist"
-    }
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
   },
   "dependencies": {
     "ajv": "^6.14.0"
