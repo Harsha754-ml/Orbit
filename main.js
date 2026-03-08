@@ -43,6 +43,9 @@ if (!gotTheLock) {
     createTray();
     contextEngine.start();
     
+    // Give pluginLoader a reference to the window for broadcasts
+    pluginLoader.setWindow(mainWindow);
+
     // Initialize Plugin API Context
     const pluginContext = {
         config,
@@ -55,6 +58,19 @@ if (!gotTheLock) {
         }
     };
     pluginLoader.loadPlugins(pluginContext);
+
+    // Inject "Plugins" entry into the Settings group (in-memory only, not saved to disk)
+    const settingsGroup = config.actions.find(a => a.label === 'Settings' && a.type === 'group');
+    if (settingsGroup && Array.isArray(settingsGroup.children)) {
+        if (!settingsGroup.children.some(c => c.command === 'ui:show-plugins')) {
+            settingsGroup.children.push({
+                type: 'command',
+                label: 'Plugins',
+                icon: 'settings.svg',
+                command: 'ui:show-plugins'
+            });
+        }
+    }
 
     isReady = true;
     logger.info('app_ready', { version: '2.0.0-elevated' });
@@ -199,8 +215,10 @@ function setupIpcHandlers() {
       return [];
     }
   });
+  ipcMain.handle('get-plugins', () => pluginLoader.getPluginList());
+  ipcMain.handle('open-plugins-folder', () => pluginLoader.openPluginsFolder());
 
-  const allowedChannels = ['toggle-mouse', 'execute-action', 'update-config', 'set-state', 'log'];
+  const allowedChannels = ['toggle-mouse', 'execute-action', 'update-config', 'set-state', 'log', 'pong-health', 'plugin-command'];
 
   ipcMain.on('orbit-api', (event, channel, data) => {
     if (!allowedChannels.includes(channel)) {
@@ -224,6 +242,14 @@ function setupIpcHandlers() {
         break;
       case 'log':
         logger[data.level || 'info'](`renderer_${data.msg}`, data.data || {});
+        break;
+      case 'pong-health':
+        // Renderer is alive — watchdog satisfied
+        break;
+      case 'plugin-command':
+        if (data && data.cmd) {
+          pluginLoader.handleCommand(data.cmd, data.data || {});
+        }
         break;
     }
   });

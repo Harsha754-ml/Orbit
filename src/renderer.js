@@ -189,19 +189,12 @@ async function init() {
         goBack();
     });
 
-    // Mouse tracking + hit detection for click-through
-    document.addEventListener('mousemove', (e) => {
-        currentState.mouseX = e.clientX;
-        currentState.mouseY = e.clientY;
-        updateHitDetection(e.clientX, e.clientY);
-    });
-
     document.addEventListener('wheel', (e) => {
         if (currentState.state !== 'IDLE' && e.ctrlKey) {
             e.preventDefault();
             const delta = e.deltaY > 0 ? -10 : 10;
             const nr = Math.max(50, Math.min(300, (currentState.config.radius || 100) + delta));
-            window.orbitAPI.updateRadius(nr);
+            window.orbitAPI.updateConfig({ radius: nr });
         }
     }, { passive: false });
     // Initial state setup
@@ -293,6 +286,9 @@ async function init() {
 
     document.addEventListener('scroll', () => hideContextMenu(), { capture: true });
 
+    // Plugin real-time data → widget updates
+    window.orbitAPI.onPluginBroadcast((data) => handlePluginBroadcast(data));
+
     startParallaxLoop();
     renderOrbit();
 }
@@ -324,6 +320,9 @@ function updateHitDetection(mx, my) {
         shouldIgnore = false;
     } else if (currentState.state !== 'IDLE') {
         // Active mode — check if cursor is within radial bounds
+        const radius = currentState.config ? (currentState.config.radius || 100) : 100;
+        const cx = currentState.radialCenter.x;
+        const cy = currentState.radialCenter.y;
         const hitRadius = radius + 60;
         const dx = mx - cx;
         const dy = my - cy;
@@ -368,19 +367,27 @@ function clearRadialPosition() {
 function renderOrbit() {
     if (!currentState.config) return;
 
+    const currentActions = currentState.levelStack.length > 0
+        ? currentState.levelStack[currentState.levelStack.length - 1]
+        : (currentState.config.actions || []);
+    const radius = currentState.levelStack.length > 0
+        ? (currentState.config.groupRadius || 75)
+        : (currentState.config.radius || 100);
+    const isNested = currentState.levelStack.length > 0;
+
     const menuContainer = document.getElementById('radial-menu');
     const menuCenter = menuContainer.querySelector('.radial-menu-center');
-    
+
     // Surgical cleanup: Remove all menu-items but keep the center-piece wrapper
     const items = Array.from(menuCenter.querySelectorAll('.menu-item'));
-    
+
     currentActions.forEach((action, index) => {
         let item = items[index];
         if (!item) {
             item = document.createElement('div');
             menuCenter.appendChild(item);
         }
-        
+
         item.className = `menu-item${isNested ? ' nested-item' : ''}${item.className.includes('visible') ? ' visible' : ''}`;
         item.dataset.action = JSON.stringify(action);
 
@@ -457,26 +464,62 @@ function createGlyph(label) {
 // ============================================
 
 function handleItemClick(action, element) {
-    if (action.command === 'ui:open-add-action') {
-        openModal();
-        return;
-    }
+    const cmd = action.command;
 
-    if (action.command && action.command.startsWith('ui:toggle-')) {
-        window.orbitAPI.executeAction(action);
+    // All ui: commands are handled entirely in the renderer
+    if (cmd === 'ui:open-add-action') { openModal(); return; }
+    if (cmd && cmd.startsWith('ui:'))    { handleUICommand(cmd); return; }
+
+    // theme: commands — apply locally and persist to config
+    if (cmd && cmd.startsWith('theme:')) {
+        const themeName = cmd.slice(6);
+        currentState.config.activeTheme = themeName;
+        applyTheme(themeName);
+        window.orbitAPI.updateConfig({ activeTheme: themeName });
         return;
     }
 
     if (action.type === 'group') {
         if (!action.children || action.children.length === 0) {
-            element.classList.add('shake');
-            setTimeout(() => element.classList.remove('shake'), 400);
+            if (element) {
+                element.classList.add('shake');
+                setTimeout(() => element.classList.remove('shake'), 400);
+            }
             return;
         }
         enterGroup(action.children);
     } else {
         window.orbitAPI.executeAction(action);
         playSound('execute');
+    }
+}
+
+// Handles every command that starts with "ui:"
+function handleUICommand(cmd) {
+    switch (cmd) {
+        case 'ui:toggle-labels':
+            currentState.config.showHoverLabels = !currentState.config.showHoverLabels;
+            window.orbitAPI.updateConfig({ showHoverLabels: currentState.config.showHoverLabels });
+            break;
+        case 'ui:toggle-sound':
+            currentState.config.enableSoundEffects = !currentState.config.enableSoundEffects;
+            window.orbitAPI.updateConfig({ enableSoundEffects: currentState.config.enableSoundEffects });
+            break;
+        case 'ui:toggle-dev':
+            currentState.config.devMode = !currentState.config.devMode;
+            window.orbitAPI.updateConfig({ devMode: currentState.config.devMode });
+            updateDevOverlay();
+            break;
+        case 'ui:show-plugins':
+            showPluginPanel();
+            break;
+        default:
+            if (cmd.startsWith('ui:toggle-widget-')) {
+                toggleWidget(cmd.slice('ui:toggle-widget-'.length));
+            } else if (cmd.startsWith('ui:plugin-')) {
+                // e.g. 'ui:plugin-pomodoro-start' → sends 'plugin-pomodoro-start' to main
+                window.orbitAPI.sendPluginCommand(cmd.slice(3), {});
+            }
     }
 }
 
@@ -597,6 +640,7 @@ function closeMenu() {
         menuContainer.classList.remove('active');
         currentState.state = 'IDLE';
         currentState.levelStack = [];
+        clearRadialPosition();
         window.orbitAPI.setState('idle');
     }, 250);
 }
@@ -654,12 +698,9 @@ function submitAction() {
     const icon = document.getElementById('action-icon').value.trim();
     if (!label || !path) return;
 
-    window.orbitAPI.addAction({
-        type: 'custom',
-        label: label,
-        path: path,
-        icon: icon || ''
-    });
+    const newAction = { type: 'custom', label, path, icon: icon || '' };
+    const newActions = [...currentState.config.actions, newAction];
+    window.orbitAPI.updateConfig({ actions: newActions });
     closeModal();
 }
 
@@ -806,7 +847,9 @@ function startParallaxLoop() {
                 const by = parseFloat(item.dataset.baseY);
                 const ix = cx + bx;
                 const iy = cy + by;
-                const distSq = dx * dx + dy * dy;
+                const mdx = currentState.mouseX - ix;
+                const mdy = currentState.mouseY - iy;
+                const distSq = mdx * mdx + mdy * mdy;
 
                 let scale = 1;
                 let offset = 0;
@@ -817,7 +860,7 @@ function startParallaxLoop() {
                     offset = (100 - dist) / 50;
                 }
 
-                const angle = Math.atan2(currentState.mouseY - iy, currentState.mouseX - ix);
+                const angle = Math.atan2(mdy, mdx);
                 const dx = Math.cos(angle) * offset + px * 0.3;
                 const dy = Math.sin(angle) * offset + py * 0.3;
 
@@ -911,7 +954,9 @@ function nestActionIntoGroup(targetAction, groupName) {
     let group = newActions.find(a => a.type === 'group' && a.label.toLowerCase() === groupName.toLowerCase());
     
     if (group) {
-        group.children.push(targetAction);
+        // Clone the group to avoid in-place mutation of config state
+        const groupIdx = newActions.indexOf(group);
+        newActions[groupIdx] = { ...group, children: [...group.children, targetAction] };
     } else {
         newActions.push({
             type: 'group',
@@ -1040,6 +1085,170 @@ function flattenActions(actions) {
         if (a.children) flat = flat.concat(flattenActions(a.children));
     });
     return flat;
+}
+
+// ============================================
+// PLUGIN BROADCAST ROUTER
+// ============================================
+
+function handlePluginBroadcast({ plugin, channel, data }) {
+    switch (channel) {
+        case 'sysmon-update':    updateSysMonWidget(data);    break;
+        case 'pomodoro-update':  updatePomodoroWidget(data);  break;
+        case 'weather-update':   updateWeatherWidget(data);   break;
+        case 'clipboard-update': updateClipboardWidget(data); break;
+        case 'notes-update':     updateNotesWidget(data);     break;
+        case 'media-update':     updateMediaWidget(data);     break;
+    }
+}
+
+// ============================================
+// WIDGET SYSTEM
+// ============================================
+
+function toggleWidget(name) {
+    const widget = document.getElementById(`widget-${name}`);
+    if (!widget) return;
+    widget.classList.toggle('hidden');
+    const anyOpen = document.querySelectorAll('.plugin-widget:not(.hidden)').length > 0;
+    if (anyOpen) window.orbitAPI.setIgnoreMouse(false);
+}
+
+// --- System Monitor ---
+function updateSysMonWidget(data) {
+    const cpuBar = document.getElementById('cpu-bar');
+    const ramBar = document.getElementById('ram-bar');
+    const cpuVal = document.getElementById('cpu-val');
+    const ramVal = document.getElementById('ram-val');
+    const uptime = document.getElementById('sysmon-uptime');
+    if (!cpuBar) return;
+
+    cpuBar.style.width = `${data.cpu}%`;
+    ramBar.style.width = `${data.ramPct}%`;
+    cpuVal.textContent = `${data.cpu}%`;
+    ramVal.textContent = `${data.ramPct}% (${data.ramUsedMB} / ${data.ramTotalMB} MB)`;
+    if (uptime) uptime.textContent = `Uptime: ${data.uptimeHr}h ${data.uptimeMin}m`;
+
+    cpuBar.style.background = data.cpu > 85 ? '#ff4444'
+        : data.cpu > 60 ? '#ffaa00' : 'var(--accent)';
+}
+
+// --- Pomodoro ---
+function updatePomodoroWidget(data) {
+    const display = document.getElementById('pomodoro-display');
+    const stateEl = document.getElementById('pomodoro-state');
+    if (!display) return;
+
+    display.textContent = data.display;
+    display.style.color = data.state === 'break' ? '#44ff88'
+        : data.state === 'work' ? 'var(--accent)'
+        : 'rgba(255,255,255,0.4)';
+
+    const labels = { work: '🔥 Focusing', break: '😌 Break', paused: '⏸ Paused', idle: 'Ready to focus' };
+    stateEl.textContent = labels[data.state] || data.state;
+}
+
+// --- Weather ---
+function updateWeatherWidget(data) {
+    const cond    = document.getElementById('weather-condition');
+    const temp    = document.getElementById('weather-temp');
+    const details = document.getElementById('weather-details');
+    if (!cond) return;
+
+    if (data.error) { cond.textContent = '⚠️ ' + data.error; temp.textContent = ''; details.textContent = ''; return; }
+    cond.textContent    = data.condition;
+    temp.textContent    = `${data.tempC}°C  (feels ${data.feelsLike}°C)`;
+    details.textContent = `${data.city}, ${data.country}  |  💧${data.humidity}%  💨${data.windKmph} km/h`;
+}
+
+// --- Clipboard ---
+function updateClipboardWidget(data) {
+    const list = document.getElementById('clipboard-list');
+    if (!list) return;
+    list.innerHTML = '';
+    (data.history || []).forEach((text, idx) => {
+        const item = document.createElement('div');
+        item.className = 'clipboard-item';
+        item.textContent = text.length > 55 ? text.slice(0, 55) + '…' : text;
+        item.title = text;
+        item.onclick = () => {
+            window.orbitAPI.sendPluginCommand('plugin-clipboard-history-copy', { index: idx });
+            item.classList.add('copied');
+            setTimeout(() => item.classList.remove('copied'), 700);
+        };
+        list.appendChild(item);
+    });
+}
+
+// --- Notes ---
+function updateNotesWidget(data) {
+    const body = document.getElementById('notes-body');
+    if (!body) return;
+    const html = (data.content || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/^# (.+)$/gm, '<strong class="note-h1">$1</strong>')
+        .replace(/^## (.+)$/gm, '<strong class="note-h2">$1</strong>')
+        .replace(/^- (.+)$/gm, '<span class="note-bullet">• $1</span>')
+        .replace(/\n/g, '<br>');
+    body.innerHTML = html;
+}
+
+// --- Media (reflected in dev overlay) ---
+function updateMediaWidget(data) {
+    if (data.title && currentState.config && currentState.config.devMode) {
+        const overlay = document.getElementById('dev-overlay');
+        if (overlay && !overlay.textContent.includes('🎵')) {
+            overlay.textContent += `  |  🎵 ${data.title}`;
+        }
+    }
+}
+
+// ============================================
+// PLUGIN MANAGEMENT PANEL
+// ============================================
+
+async function showPluginPanel() {
+    const overlay = document.getElementById('plugin-panel-overlay');
+    if (!overlay) return;
+    overlay.classList.add('active');
+    window.orbitAPI.setIgnoreMouse(false);
+    await loadPluginList();
+}
+
+function closePluginPanel() {
+    const overlay = document.getElementById('plugin-panel-overlay');
+    if (overlay) overlay.classList.remove('active');
+    updateHitDetection(currentState.mouseX, currentState.mouseY);
+}
+
+async function loadPluginList() {
+    const container = document.getElementById('plugin-list-container');
+    if (!container) return;
+    container.innerHTML = '<div class="plugin-loading">Loading…</div>';
+    try {
+        const plugins = await window.orbitAPI.getPlugins();
+        container.innerHTML = '';
+        if (!plugins || plugins.length === 0) {
+            container.innerHTML = '<div class="plugin-empty">No plugins loaded.<br>Drop a .js file in the plugins folder and restart Orbit.</div>';
+            return;
+        }
+        plugins.forEach(p => {
+            const card = document.createElement('div');
+            card.className = `plugin-card ${p.enabled ? 'enabled' : 'disabled'}`;
+            card.innerHTML = `
+                <div class="plugin-card-info">
+                    <div class="plugin-card-name">${p.name}</div>
+                    <div class="plugin-card-desc">${p.description || ''}</div>
+                    <div class="plugin-card-version">v${p.version}</div>
+                </div>
+                <div class="plugin-card-badge ${p.enabled ? 'badge-active' : 'badge-inactive'}">
+                    ${p.enabled ? '● Active' : '○ Inactive'}
+                </div>`;
+            container.appendChild(card);
+        });
+    } catch (_) {
+        container.innerHTML = '<div class="plugin-empty">Failed to load plugins.</div>';
+    }
 }
 
 initPromise = init();
